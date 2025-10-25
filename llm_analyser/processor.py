@@ -63,7 +63,6 @@ class CSVProcessor:
         output_path: Path | str,
         columns: List[str],
         prompt: str,
-        new_column_prefix: str = "llm_output",
         response_model: Optional[Type[BaseModel]] = None,
         resume: bool = True,
     ) -> None:
@@ -74,7 +73,6 @@ class CSVProcessor:
             output_path: Path to the output CSV file.
             columns: List of column names to use as input for LLM.
             prompt: User-provided prompt describing the task.
-            new_column_prefix: Prefix for new columns created from LLM output.
             response_model: Optional Pydantic model for structured output.
             resume: If True and output exists, skip rows with data.
 
@@ -108,9 +106,7 @@ class CSVProcessor:
 
         # Determine new column names
         if response_model is not None:
-            new_column_names = [
-                f"{new_column_prefix}_{name}" for name in get_field_names(response_model)
-            ]
+            new_column_names = get_field_names(response_model)
         else:
             # Will be determined dynamically from first result
             new_column_names = []
@@ -165,13 +161,8 @@ class CSVProcessor:
 
         # Convert results to DataFrame columns
         if results:
-            # Flatten nested JSON into columns with prefix
+            # Flatten nested JSON into columns
             result_df = pd.json_normalize(results)
-
-            # Add prefix to all new columns
-            result_df.columns = [
-                f"{new_column_prefix}_{col}" for col in result_df.columns
-            ]
 
             # Combine with original DataFrame
             output_df = pd.concat([df, result_df], axis=1)

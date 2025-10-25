@@ -49,8 +49,8 @@ class TestProcessCSV:
 
             # Check output has new columns
             output_df = pd.read_csv(output_path)
-            assert "llm_output_category" in output_df.columns
-            assert "llm_output_score" in output_df.columns
+            assert "category" in output_df.columns
+            assert "score" in output_df.columns
 
     def test_process_csv_with_missing_file(self, tmp_path, mock_env_vars):
         """Test processing non-existent CSV file raises error."""
@@ -81,29 +81,6 @@ class TestProcessCSV:
                 columns=["nonexistent_column"],
                 prompt="Test",
             )
-
-    def test_process_csv_with_custom_column_prefix(self, sample_csv_file, tmp_path, mock_env_vars):
-        """Test processing CSV with custom column prefix."""
-        from llm_analyser.llm_client import LLMClient
-
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
-        processor = CSVProcessor(llm_client=client)
-
-        output_path = tmp_path / "output.csv"
-
-        with patch.object(client, 'generate_structured_output') as mock_generate:
-            mock_generate.return_value = {"result": "success"}
-
-            processor.process_csv(
-                input_path=sample_csv_file,
-                output_path=output_path,
-                columns=["title"],
-                prompt="Test",
-                new_column_prefix="custom_prefix"
-            )
-
-            output_df = pd.read_csv(output_path)
-            assert "custom_prefix_result" in output_df.columns
 
     def test_process_csv_handles_row_errors(self, sample_csv_file, tmp_path, mock_env_vars):
         """Test that processor continues when individual rows fail."""

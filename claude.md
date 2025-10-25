@@ -441,38 +441,23 @@ Determine if this article is relevant to DISH research (true/false).
 Provide confidence level (high/medium/low) and reason.
 ```
 
-#### Pattern 2: String Fields with Post-Processing
+#### Pattern 2: String Fields (Requires Care)
 
-For multi-level classification (high/middle/low), accept that post-processing is required:
+For multi-level classification (high/middle/low):
 
 ```bash
 --schema '{"relation": "str", "reason": "str"}'
 ```
 
 **Reality**:
-- LLMs may return "unrelated", "irrelevant", "no", "N/A", etc.
+- LLMs may return unexpected values
 - No provider enforces enum constraints for string fields
 - Even explicit prompts are often ignored
 
-**Solution**: Implement normalization script:
-
-```python
-def normalize_relation(value):
-    """Normalize relation values to expected range."""
-    if pd.isna(value):
-        return "low"
-
-    value_lower = str(value).lower().strip()
-
-    if any(kw in value_lower for kw in ['high', 'strong', 'direct']):
-        return "high"
-    elif any(kw in value_lower for kw in ['middle', 'moderate', 'medium']):
-        return "middle"
-    else:
-        return "low"  # Default for unrelated, irrelevant, no, etc.
-
-df['llm_output_relation'] = df['llm_output_relation'].apply(normalize_relation)
-```
+**Best Practice**:
+- Use very explicit prompts listing all allowed values
+- Consider post-processing for production use
+- Use boolean flags when possible (see Pattern 3)
 
 #### Pattern 3: Hybrid Approach (Production Ready)
 
@@ -484,22 +469,19 @@ Combine boolean gates with descriptive string fields:
 
 **Workflow**:
 1. Filter by boolean field: `df[df['is_dish_related'] == True]`
-2. Normalize relevance_level: Apply normalization function
+2. Review relevance_level for additional context
 3. Use explanation for manual review of edge cases
 
 **Benefits**:
 - Reliable filtering via boolean
 - Rich context via string fields
-- Post-processing only needed for non-boolean fields
+- Consistent behavior across providers
 
 ### Provider-Specific Behavior
 
-Based on empirical testing (hsa-miR-144-3p analysis, 43 articles):
-
 | Provider | Boolean Fields | String Enums | Format Compliance |
 |----------|---------------|--------------|-------------------|
-| **Gemini 2.0 Flash Lite** | ✅ Excellent | ❌ Poor | Used "unrelated", "no", "irrelevant" |
-| **Gemini 2.5 Flash Lite** | ✅ Excellent | ❌ Poor | Used "not_related", "NOT_RELEVANT", etc. |
+| **Gemini Flash** | ✅ Excellent | ❌ Poor | May return unexpected string values |
 | **OpenAI GPT-4o** | ✅ Excellent | ✅ Good | Best enum support (via Pydantic) |
 | **Anthropic Claude** | ✅ Excellent | ⚠️ Moderate | Good with strong prompts |
 
@@ -510,10 +492,10 @@ Based on empirical testing (hsa-miR-144-3p analysis, 43 articles):
 When designing your schema:
 
 1. ✅ **Use boolean for binary decisions** - Most reliable across all providers
-2. ⚠️ **Expect post-processing for string enums** - Plan for normalization
+2. ⚠️ **String fields may return unexpected values** - Plan accordingly
 3. ✅ **Combine types strategically** - Boolean gates + string descriptions
 4. ⚠️ **Test prompts in preview mode** - Check actual output before full run
-5. ✅ **Document normalization rules** - Version control your normalization logic
+5. ✅ **Use explicit prompts** - List all allowed values clearly
 6. ⚠️ **Don't rely on prompt compliance alone** - Even "MUST" instructions get ignored
 
 ## Lessons Learned
@@ -522,14 +504,11 @@ When designing your schema:
 
 #### 1. String Field Enum Constraints Are Not Enforced
 
-**Discovery**: In the hsa-miR-144-3p DISH relevance analysis (43 articles, 2 models):
+**Discovery**: String fields with expected enum-like values often return unexpected outputs.
 - Expected: `"relation": "high"` | `"middle"` | `"low"`
-- Actual Gemini 2.0 outputs: "unrelated" (40), "no" (2), "irrelevant" (1)
-- Actual Gemini 2.5 outputs: 11 different variations including "not_related", "NOT_RELEVANT", "not related", etc.
+- Actual: Various unexpected values like "unrelated", "no", "N/A", etc.
 
-**Lesson**: `--schema '{"field": "str"}'` only enforces type (string), not enum values. Post-processing is mandatory for production.
-
-**Code**: See `normalize_results.py` for normalization implementation.
+**Lesson**: `--schema '{"field": "str"}'` only enforces type (string), not enum values.
 
 #### 2. Boolean Fields Provide Strict Enforcement
 
@@ -544,14 +523,11 @@ When designing your schema:
 
 #### 3. Prompt Compliance Varies Dramatically by Model
 
-**Discovery**: Same exact prompt with different models:
-- Gemini 2.0: 3 different unexpected values
-- Gemini 2.5: 11 different unexpected values (worse than 2.0!)
-- Both models ignored CRITICAL, MUST, and example output format
+**Discovery**: Same exact prompt with different models can produce varying output formats.
+- Some models may ignore CRITICAL, MUST, and example output format
+- Newer models don't necessarily follow instructions better for structured output
 
-**Lesson**: Never rely solely on prompt engineering. Always implement programmatic validation/normalization.
-
-**Implication**: More sophisticated models don't necessarily follow instructions better for structured output.
+**Lesson**: Never rely solely on prompt engineering. Test thoroughly with preview mode.
 
 #### 4. Multi-Provider Support Requires Lowest Common Denominator
 
@@ -614,16 +590,13 @@ logger.warning("Unknown provider detected...")
 
 #### 7. Model Comparison Requires Controlled Experiments
 
-**Discovery**: Comparing Gemini 2.0 vs 2.5 on same dataset:
-- Both gave identical classifications (all "low" after normalization)
-- Different output formats, same semantic meaning
-- 2.5 showed MORE variation in format (unexpected!)
+**Discovery**: Different model versions may produce different output formats.
 
 **Lesson**: For meaningful model comparison:
 1. Use identical prompts
 2. Same dataset and random seed (if applicable)
-3. Normalize outputs before comparison
-4. Compare semantic meaning, not just format compliance
+3. Compare semantic meaning, not just format compliance
+4. Use preview mode to validate outputs
 
 **Insight**: Newer model versions may be optimized for different objectives than format compliance.
 
@@ -631,23 +604,19 @@ logger.warning("Unknown provider detected...")
 
 Based on lessons learned:
 
-1. **Consider adding built-in normalization**:
-   - Add `--normalize` flag with predefined strategies
-   - Reduce user burden of post-processing
-
-2. **Add schema validation warnings**:
+1. **Add schema validation warnings**:
    - Warn users when using string fields for enum-like values
    - Suggest boolean alternatives
 
-3. **Improve prompt templates**:
+2. **Improve prompt templates**:
    - Provide model-specific prompt templates
    - Include examples that work better for each provider
 
-4. **Add output validation**:
+3. **Add output validation**:
    - Option to validate outputs against expected patterns
    - Flag unexpected values during processing
 
-5. **Better progress tracking**:
+4. **Better progress tracking**:
    - Show validation warnings in real-time
    - Alert user if outputs deviate from expectations
 

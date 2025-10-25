@@ -105,13 +105,6 @@ Environment Variables:
     )
 
     parser.add_argument(
-        "--column-prefix",
-        type=str,
-        default="llm_output",
-        help="Prefix for new columns created from LLM output (default: 'llm_output')",
-    )
-
-    parser.add_argument(
         "--schema",
         type=str,
         help='Output schema as JSON string (e.g., \'{"field1": "str", "field2": "int"}\')',
@@ -267,7 +260,6 @@ def main() -> None:
                 output_path=output_path,
                 columns=columns,
                 prompt=prompt,
-                new_column_prefix=args.column_prefix,
                 response_model=response_model,
                 resume=not args.no_resume,
             )

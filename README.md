@@ -219,7 +219,7 @@ For granular classifications (e.g., high/medium/low), understand the limitations
 
 **Best Practice**:
 1. Use very explicit prompts listing all allowed values
-2. Implement post-processing to normalize unexpected outputs
+2. Consider post-processing for production use
 3. Consider using boolean flags instead (see Pattern 3)
 
 #### Pattern 3: Hybrid Approach (Recommended for Production) 🎯
@@ -239,7 +239,7 @@ Provide a brief explanation.
 
 **Advantages**:
 - Boolean field provides reliable binary classification
-- String fields can be normalized in post-processing
+- String fields provide additional context
 - Works consistently across all providers
 
 ### Supported Field Types
@@ -403,34 +403,23 @@ ValueError: Failed to parse LLM response as JSON
    ```
    Boolean fields strictly enforce `true`/`false` values across all providers.
 
-2. **Implement post-processing normalization**:
-   ```python
-   import pandas as pd
-
-   def normalize_values(value):
-       """Map unexpected values to expected ones."""
-       value_lower = str(value).lower()
-       if any(keyword in value_lower for keyword in ['high', 'strong', 'yes']):
-           return "high"
-       elif any(keyword in value_lower for keyword in ['middle', 'moderate']):
-           return "middle"
-       else:
-           return "low"
-
-   df['llm_output_field'] = df['llm_output_field'].apply(normalize_values)
-   ```
-
-3. **Choose models with better instruction-following**:
+2. **Choose models with better instruction-following**:
    - OpenAI GPT-4o: Best enum constraint support
    - Anthropic Claude: Strong instruction-following
-   - Gemini Flash: May require post-processing
+   - Gemini Flash: Good for general use
 
-4. **Strengthen your prompt**:
+3. **Strengthen your prompt**:
    - Provide explicit examples
    - Use "You MUST output only: X, Y, or Z"
    - Add example output in the prompt
 
-**Note**: Even with strict prompts, post-processing is often necessary for production use when using string fields with enum-like values.
+4. **Use preview mode to validate**:
+   ```bash
+   --preview --preview-rows 5
+   ```
+   Check actual outputs before processing full dataset.
+
+**Note**: Even with strict prompts, string fields may return unexpected values. Consider post-processing for production use.
 
 ## Development
 
