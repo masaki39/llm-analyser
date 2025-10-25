@@ -136,7 +136,25 @@ uv run python main.py --input data/papers.csv --columns title,abstract --output 
 uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
 ```
 
-#### Example 4: List Available Models
+#### Example 4: Boolean-Based Classification (Recommended)
+
+```bash
+uv run python main.py \
+  --input data/articles.csv \
+  --columns title,abstract \
+  --schema '{"is_relevant": "bool", "summary": "str"}' \
+  --output classified.csv
+```
+
+When prompted, enter:
+```
+Determine if this article is relevant to climate change research (true/false).
+Provide a one-sentence summary.
+```
+
+**Why this works well**: Boolean fields guarantee only `true`/`false` values, avoiding ambiguous responses like "yes", "maybe", or "unclear".
+
+#### Example 5: List Available Models
 
 ```bash
 uv run python main.py --list-models
@@ -154,6 +172,112 @@ uv run python main.py --list-models
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
 | `--column-prefix` | | Prefix for new columns (default: `llm_output`) | No |
+| `--schema` | | JSON schema for output structure (e.g., `'{"field": "str"}'`) | No |
+| `--fields` | | Simple field definition (e.g., `"field1:str,field2:int"`) | No |
+
+## Best Practices for Schema Definition
+
+### Choosing Schema vs Fields
+
+Both `--schema` and `--fields` create Pydantic models for structured output:
+
+```bash
+# Schema format (JSON)
+--schema '{"is_relevant": "bool", "summary": "str"}'
+
+# Fields format (comma-separated)
+--fields "is_relevant:bool,summary:str"
+```
+
+**Recommendation**: Use `--schema` for clarity and explicit validation, or `--fields` for brevity.
+
+### Schema Design Patterns
+
+#### Pattern 1: Binary Classification (Most Reliable) ✅
+
+Use **boolean fields** for yes/no decisions - these are strictly enforced across all LLM providers:
+
+```bash
+uv run python main.py \
+  --input data.csv \
+  --columns title,abstract \
+  --schema '{"is_relevant": "bool", "reason": "str"}' \
+  --output results.csv
+```
+
+**Why boolean?** Unlike string fields, boolean type guarantees only `true` or `false` values - no unexpected strings like "yes", "maybe", or "unknown".
+
+#### Pattern 2: Multi-level Classification (Requires Care) ⚠️
+
+For granular classifications (e.g., high/medium/low), understand the limitations:
+
+```bash
+--schema '{"relevance": "str", "confidence": "str", "notes": "str"}'
+```
+
+**Important**: String fields don't enforce enum constraints. LLMs may return unexpected values.
+
+**Best Practice**:
+1. Use very explicit prompts listing all allowed values
+2. Implement post-processing to normalize unexpected outputs
+3. Consider using boolean flags instead (see Pattern 3)
+
+#### Pattern 3: Hybrid Approach (Recommended for Production) 🎯
+
+Combine boolean gates with descriptive fields:
+
+```bash
+--schema '{"is_dish_related": "bool", "confidence_level": "str", "explanation": "str"}'
+```
+
+Then in your prompt:
+```
+First, determine if the article is DISH-related (true/false).
+Then rate confidence as "high", "medium", or "low".
+Provide a brief explanation.
+```
+
+**Advantages**:
+- Boolean field provides reliable binary classification
+- String fields can be normalized in post-processing
+- Works consistently across all providers
+
+### Supported Field Types
+
+| Type | Enforcement Level | Use Case | Example |
+|------|------------------|----------|---------|
+| `bool` | ✅ Strict (`true`/`false` only) | Binary decisions | `"is_relevant": "bool"` |
+| `int` | ✅ Strict (integers only) | Counts, scores | `"score": "int"` |
+| `float` | ✅ Strict (numbers only) | Decimal scores | `"confidence": "float"` |
+| `str` | ⚠️ Flexible (any text) | Descriptions, reasons | `"summary": "str"` |
+| `list[str]` | ⚠️ Flexible (JSON array) | Tags, keywords | `"tags": "list[str]"` |
+
+### Understanding Output Validation Levels
+
+LLM Analyser supports three levels of validation through LiteLLM:
+
+1. **JSON Syntax Only** (basic mode)
+   - Ensures valid JSON structure
+   - No field or type validation
+
+2. **Type Validation** (with `--schema` or `--fields`)
+   - Enforces field presence and types
+   - Boolean, int, float strictly enforced
+   - Strings accept any text
+
+3. **Enum/Pattern Validation** (limited support)
+   - Only supported by some models (e.g., OpenAI GPT-4o)
+   - Not universally available
+   - **Requires post-processing for most models**
+
+### Provider-Specific Behavior
+
+| Provider | Boolean/Int/Float | String Enums | Recommendation |
+|----------|-------------------|--------------|----------------|
+| OpenAI (GPT-4o) | ✅ Excellent | ✅ Good | Best for strict schemas |
+| Anthropic (Claude) | ✅ Excellent | ⚠️ Moderate | Good JSON, use strong prompts |
+| Gemini (Flash) | ✅ Good | ❌ Limited | Boolean + post-processing |
+| Others | Varies | ❌ Limited | Test thoroughly |
 
 ## How It Works
 
@@ -261,6 +385,52 @@ ValueError: Failed to parse LLM response as JSON
 ```
 
 **Solution**: Make your prompt more specific about requiring JSON output, or try rephrasing the task.
+
+### Unexpected Output Values
+
+**Problem**: LLM returns values outside your expected range (e.g., "yes"/"no" instead of "high"/"middle"/"low").
+
+**Why this happens**:
+- String fields (`"str"`) only enforce type, not specific values
+- LLMs may interpret instructions creatively
+- Enum constraints are not universally supported across all providers
+
+**Solutions**:
+
+1. **Use boolean fields for binary decisions** (RECOMMENDED):
+   ```bash
+   --schema '{"is_relevant": "bool", "reason": "str"}'
+   ```
+   Boolean fields strictly enforce `true`/`false` values across all providers.
+
+2. **Implement post-processing normalization**:
+   ```python
+   import pandas as pd
+
+   def normalize_values(value):
+       """Map unexpected values to expected ones."""
+       value_lower = str(value).lower()
+       if any(keyword in value_lower for keyword in ['high', 'strong', 'yes']):
+           return "high"
+       elif any(keyword in value_lower for keyword in ['middle', 'moderate']):
+           return "middle"
+       else:
+           return "low"
+
+   df['llm_output_field'] = df['llm_output_field'].apply(normalize_values)
+   ```
+
+3. **Choose models with better instruction-following**:
+   - OpenAI GPT-4o: Best enum constraint support
+   - Anthropic Claude: Strong instruction-following
+   - Gemini Flash: May require post-processing
+
+4. **Strengthen your prompt**:
+   - Provide explicit examples
+   - Use "You MUST output only: X, Y, or Z"
+   - Add example output in the prompt
+
+**Note**: Even with strict prompts, post-processing is often necessary for production use when using string fields with enum-like values.
 
 ## Development
 

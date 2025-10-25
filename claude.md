@@ -384,6 +384,285 @@ With default settings:
 
 None currently. Track issues in GitHub Issues when available.
 
+## Schema Design Patterns
+
+### Understanding Structured Output Validation
+
+LLM Analyser supports three levels of output validation through LiteLLM:
+
+1. **JSON Syntax Validation** (basic mode)
+   - Ensures valid JSON structure
+   - No field or type validation
+   - Works with all providers
+
+2. **Type Validation** (with `--schema` or `--fields`)
+   - Enforces field presence and basic types
+   - Boolean, int, float strictly enforced
+   - String fields accept any text (no enum constraint)
+
+3. **Enum/Pattern Validation** (limited support)
+   - Only supported by select models (OpenAI GPT-4o)
+   - Not universally available across providers
+   - **Requires post-processing for most models**
+
+### Type Enforcement Reality
+
+Based on real-world testing with multiple providers:
+
+| Field Type | Enforcement Level | Validation Behavior |
+|------------|------------------|---------------------|
+| `bool` | ✅ **Strict** | Only `true`/`false` allowed |
+| `int` | ✅ **Strict** | Only integers allowed |
+| `float` | ✅ **Strict** | Only numbers allowed |
+| `str` | ⚠️ **Flexible** | Any text accepted (no enum) |
+| `list[str]` | ⚠️ **Flexible** | JSON array of strings |
+
+**Key Insight**: String fields with `--schema '{"relation": "str"}'` only enforce that the value is a string. They do NOT enforce enum-like constraints (e.g., "must be high/middle/low").
+
+### Recommended Schema Patterns
+
+#### Pattern 1: Boolean Gates (Most Reliable)
+
+For binary classification tasks, use boolean fields:
+
+```bash
+--schema '{"is_relevant": "bool", "confidence": "str", "reason": "str"}'
+```
+
+**Advantages**:
+- Guaranteed `true`/`false` values across ALL providers
+- No ambiguous responses like "yes", "maybe", "N/A"
+- Perfect for filtering and downstream processing
+- Works identically on Gemini, OpenAI, Claude, etc.
+
+**Example prompt**:
+```
+Determine if this article is relevant to DISH research (true/false).
+Provide confidence level (high/medium/low) and reason.
+```
+
+#### Pattern 2: String Fields with Post-Processing
+
+For multi-level classification (high/middle/low), accept that post-processing is required:
+
+```bash
+--schema '{"relation": "str", "reason": "str"}'
+```
+
+**Reality**:
+- LLMs may return "unrelated", "irrelevant", "no", "N/A", etc.
+- No provider enforces enum constraints for string fields
+- Even explicit prompts are often ignored
+
+**Solution**: Implement normalization script:
+
+```python
+def normalize_relation(value):
+    """Normalize relation values to expected range."""
+    if pd.isna(value):
+        return "low"
+
+    value_lower = str(value).lower().strip()
+
+    if any(kw in value_lower for kw in ['high', 'strong', 'direct']):
+        return "high"
+    elif any(kw in value_lower for kw in ['middle', 'moderate', 'medium']):
+        return "middle"
+    else:
+        return "low"  # Default for unrelated, irrelevant, no, etc.
+
+df['llm_output_relation'] = df['llm_output_relation'].apply(normalize_relation)
+```
+
+#### Pattern 3: Hybrid Approach (Production Ready)
+
+Combine boolean gates with descriptive string fields:
+
+```bash
+--schema '{"is_dish_related": "bool", "relevance_level": "str", "explanation": "str"}'
+```
+
+**Workflow**:
+1. Filter by boolean field: `df[df['is_dish_related'] == True]`
+2. Normalize relevance_level: Apply normalization function
+3. Use explanation for manual review of edge cases
+
+**Benefits**:
+- Reliable filtering via boolean
+- Rich context via string fields
+- Post-processing only needed for non-boolean fields
+
+### Provider-Specific Behavior
+
+Based on empirical testing (hsa-miR-144-3p analysis, 43 articles):
+
+| Provider | Boolean Fields | String Enums | Format Compliance |
+|----------|---------------|--------------|-------------------|
+| **Gemini 2.0 Flash Lite** | ✅ Excellent | ❌ Poor | Used "unrelated", "no", "irrelevant" |
+| **Gemini 2.5 Flash Lite** | ✅ Excellent | ❌ Poor | Used "not_related", "NOT_RELEVANT", etc. |
+| **OpenAI GPT-4o** | ✅ Excellent | ✅ Good | Best enum support (via Pydantic) |
+| **Anthropic Claude** | ✅ Excellent | ⚠️ Moderate | Good with strong prompts |
+
+**Recommendation**: For multi-provider compatibility, design schemas assuming string fields will not enforce enums.
+
+### Schema Design Checklist
+
+When designing your schema:
+
+1. ✅ **Use boolean for binary decisions** - Most reliable across all providers
+2. ⚠️ **Expect post-processing for string enums** - Plan for normalization
+3. ✅ **Combine types strategically** - Boolean gates + string descriptions
+4. ⚠️ **Test prompts in preview mode** - Check actual output before full run
+5. ✅ **Document normalization rules** - Version control your normalization logic
+6. ⚠️ **Don't rely on prompt compliance alone** - Even "MUST" instructions get ignored
+
+## Lessons Learned
+
+### Real-World Findings from Production Use
+
+#### 1. String Field Enum Constraints Are Not Enforced
+
+**Discovery**: In the hsa-miR-144-3p DISH relevance analysis (43 articles, 2 models):
+- Expected: `"relation": "high"` | `"middle"` | `"low"`
+- Actual Gemini 2.0 outputs: "unrelated" (40), "no" (2), "irrelevant" (1)
+- Actual Gemini 2.5 outputs: 11 different variations including "not_related", "NOT_RELEVANT", "not related", etc.
+
+**Lesson**: `--schema '{"field": "str"}'` only enforces type (string), not enum values. Post-processing is mandatory for production.
+
+**Code**: See `normalize_results.py` for normalization implementation.
+
+#### 2. Boolean Fields Provide Strict Enforcement
+
+**Discovery**: During investigation of why string enums failed, tested boolean fields:
+- Boolean fields return ONLY `true` or `false`
+- No ambiguous values possible
+- Consistent across all tested providers (Gemini, OpenAI, Claude)
+
+**Lesson**: For any yes/no decision, always use `"field": "bool"` instead of `"field": "str"` with prompt-based instructions.
+
+**Impact**: This became a primary recommendation in README.md Best Practices section.
+
+#### 3. Prompt Compliance Varies Dramatically by Model
+
+**Discovery**: Same exact prompt with different models:
+- Gemini 2.0: 3 different unexpected values
+- Gemini 2.5: 11 different unexpected values (worse than 2.0!)
+- Both models ignored CRITICAL, MUST, and example output format
+
+**Lesson**: Never rely solely on prompt engineering. Always implement programmatic validation/normalization.
+
+**Implication**: More sophisticated models don't necessarily follow instructions better for structured output.
+
+#### 4. Multi-Provider Support Requires Lowest Common Denominator
+
+**Discovery**: LiteLLM's `supports_response_schema()` returns different results:
+- OpenAI GPT-4o: Supports Pydantic models with enums
+- Gemini models: Only support basic JSON mode
+- Other providers: Varies widely
+
+**Lesson**: For tools targeting multiple providers, design around the most limited provider's capabilities.
+
+**Trade-off**: Lose strict validation for gain in provider flexibility.
+
+#### 5. Resume Functionality Needs Robust Empty Detection
+
+**Discovery**: During code review, identified edge cases in resume logic:
+- Empty strings `""` vs. `NaN` vs. `"{}"` (empty JSON)
+- Rows could be skipped incorrectly or processed unnecessarily
+
+**Lesson**: Robust empty detection requires checking multiple conditions:
+
+```python
+def _should_process_row(self, row, new_column_names):
+    for col in new_column_names:
+        if col in row.index:
+            value = row[col]
+            if pd.isna(value) or value == "":
+                return True
+            try:
+                parsed = json.loads(str(value))
+                if not parsed or parsed == {}:
+                    return True
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+    return not any(col in row.index for col in new_column_names)
+```
+
+**Impact**: Prevents data loss and unnecessary API calls in resume mode.
+
+#### 6. Logging Infrastructure Matters for Debugging
+
+**Discovery**: Initial implementation used `print()` statements throughout.
+- Hard to filter user-facing messages vs. debug info
+- No log levels for different severity
+- Difficult to redirect to files for long-running jobs
+
+**Lesson**: Even for "simple" CLI tools, use proper logging from the start:
+
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# User-facing
+logger.info("Processing row 10/100...")
+
+# Debugging
+logger.warning("Unknown provider detected...")
+```
+
+**Benefit**: Easy to add file logging, log levels, and structured logging later.
+
+#### 7. Model Comparison Requires Controlled Experiments
+
+**Discovery**: Comparing Gemini 2.0 vs 2.5 on same dataset:
+- Both gave identical classifications (all "low" after normalization)
+- Different output formats, same semantic meaning
+- 2.5 showed MORE variation in format (unexpected!)
+
+**Lesson**: For meaningful model comparison:
+1. Use identical prompts
+2. Same dataset and random seed (if applicable)
+3. Normalize outputs before comparison
+4. Compare semantic meaning, not just format compliance
+
+**Insight**: Newer model versions may be optimized for different objectives than format compliance.
+
+### Technical Debt and Future Improvements
+
+Based on lessons learned:
+
+1. **Consider adding built-in normalization**:
+   - Add `--normalize` flag with predefined strategies
+   - Reduce user burden of post-processing
+
+2. **Add schema validation warnings**:
+   - Warn users when using string fields for enum-like values
+   - Suggest boolean alternatives
+
+3. **Improve prompt templates**:
+   - Provide model-specific prompt templates
+   - Include examples that work better for each provider
+
+4. **Add output validation**:
+   - Option to validate outputs against expected patterns
+   - Flag unexpected values during processing
+
+5. **Better progress tracking**:
+   - Show validation warnings in real-time
+   - Alert user if outputs deviate from expectations
+
+### Documentation Philosophy
+
+**Key Realization**: Users expect structured output to be more strict than it actually is.
+
+**Solution**: README.md now explicitly documents:
+1. Three levels of validation (syntax, type, enum)
+2. Type enforcement table showing which types are strict
+3. Provider-specific behavior comparison
+4. Multiple schema design patterns with trade-offs
+
+**Goal**: Set realistic expectations and provide actionable workarounds.
+
 ## Version History
 
 ### v0.2.0 (Current)
