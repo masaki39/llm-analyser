@@ -10,7 +10,7 @@ class TestConfig:
 
     def test_default_model(self):
         """Test default model is set correctly."""
-        assert config.DEFAULT_MODEL == "gemini/gemini-2.0-flash-lite"
+        assert config.DEFAULT_MODEL == "gemini/gemini-2.5-flash-lite"
 
     def test_api_key_env_vars(self):
         """Test API key environment variable mappings."""
@@ -28,6 +28,7 @@ class TestConfig:
         assert len(config.SUPPORTED_MODELS) > 0
 
         # Check some key models exist
+        assert "gemini/gemini-2.5-flash-lite" in config.SUPPORTED_MODELS
         assert "gemini/gemini-2.0-flash-lite" in config.SUPPORTED_MODELS
         assert "gpt-4o" in config.SUPPORTED_MODELS
         assert "claude-3-5-sonnet-20241022" in config.SUPPORTED_MODELS

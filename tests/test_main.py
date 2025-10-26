@@ -131,6 +131,7 @@ class TestListSupportedModels:
 
         # Check that output contains expected content
         assert "SUPPORTED MODELS" in captured.out
+        assert "gemini/gemini-2.5-flash-lite" in captured.out
         assert "gemini/gemini-2.0-flash-lite" in captured.out
         assert "gpt-4o" in captured.out
         assert "claude-3-5-sonnet" in captured.out

@@ -43,7 +43,7 @@ class LLMClient:
         """Initialize the LLM client.
 
         Args:
-            model_name: Name of the model to use (e.g., "gemini/gemini-2.0-flash-lite", "gpt-4o").
+            model_name: Name of the model to use (e.g., "gemini/gemini-2.5-flash-lite", "gpt-4o").
             api_key: Optional API key. If None, LiteLLM will use standard environment variables.
 
         Raises:

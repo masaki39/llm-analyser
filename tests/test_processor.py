@@ -15,7 +15,7 @@ class TestCSVProcessorInit:
         """Test processor initialization with LLM client."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         assert processor.llm_client == client
@@ -28,7 +28,7 @@ class TestProcessCSV:
         """Test processing CSV with valid input."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         output_path = tmp_path / "output.csv"
@@ -56,7 +56,7 @@ class TestProcessCSV:
         """Test processing non-existent CSV file raises error."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         with pytest.raises(FileNotFoundError):
@@ -71,7 +71,7 @@ class TestProcessCSV:
         """Test processing CSV with invalid column names raises error."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         with pytest.raises(ValueError, match="Columns not found"):
@@ -86,7 +86,7 @@ class TestProcessCSV:
         """Test that processor continues when individual rows fail."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         output_path = tmp_path / "output.csv"
@@ -121,7 +121,7 @@ class TestPreviewSample:
         """Test preview mode with valid input."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         with patch.object(client, 'generate_structured_output') as mock_generate:
@@ -141,7 +141,7 @@ class TestPreviewSample:
         """Test preview with invalid columns raises error."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         with pytest.raises(ValueError, match="Columns not found"):
@@ -155,7 +155,7 @@ class TestPreviewSample:
         """Test preview uses default 3 rows."""
         from llm_analyser.llm_client import LLMClient
 
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
 
         with patch.object(client, 'generate_structured_output') as mock_generate:

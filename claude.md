@@ -190,7 +190,7 @@ API keys are managed via environment variables or `.env` files:
 `config.py` centralizes all configuration:
 
 ```python
-DEFAULT_MODEL = "gemini-2.0-flash-lite"
+DEFAULT_MODEL = "gemini-2.5-flash-lite"
 MAX_RETRIES = 5
 RETRY_MIN_WAIT = 1
 RETRY_MAX_WAIT = 60

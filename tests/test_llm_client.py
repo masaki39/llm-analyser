@@ -14,8 +14,8 @@ class TestLLMClientInitialization:
 
     def test_init_with_gemini_model(self, mock_env_vars):
         """Test initialization with Gemini model."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
-        assert client.model_name == "gemini/gemini-2.0-flash-lite"
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
+        assert client.model_name == "gemini/gemini-2.5-flash-lite"
         assert client.provider == "gemini"
 
     def test_init_with_openai_model(self, mock_env_vars):
@@ -38,15 +38,15 @@ class TestLLMClientInitialization:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         with pytest.raises(ValueError, match="API key.*not found"):
-            LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+            LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
     def test_init_with_explicit_api_key(self):
         """Test initialization with explicit API key."""
         client = LLMClient(
-            model_name="gemini/gemini-2.0-flash-lite",
+            model_name="gemini/gemini-2.5-flash-lite",
             api_key="explicit-test-key"
         )
-        assert client.model_name == "gemini/gemini-2.0-flash-lite"
+        assert client.model_name == "gemini/gemini-2.5-flash-lite"
 
 
 class TestProviderDetection:
@@ -83,7 +83,7 @@ class TestJSONParsing:
 
     def test_parse_clean_json(self, mock_env_vars, sample_llm_response):
         """Test parsing clean JSON response."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         with patch.object(client, '_generate_with_retry') as mock_generate:
             mock_generate.return_value = json.dumps(sample_llm_response)
@@ -97,7 +97,7 @@ class TestJSONParsing:
 
     def test_parse_json_with_markdown(self, mock_env_vars, sample_llm_response_with_markdown, sample_llm_response):
         """Test parsing JSON wrapped in markdown code block."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         with patch.object(client, '_generate_with_retry') as mock_generate:
             mock_generate.return_value = sample_llm_response_with_markdown
@@ -111,7 +111,7 @@ class TestJSONParsing:
 
     def test_parse_invalid_json_raises_error(self, mock_env_vars):
         """Test that invalid JSON raises ValueError."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         with patch.object(client, '_generate_with_retry') as mock_generate:
             mock_generate.return_value = "This is not JSON"
@@ -124,7 +124,7 @@ class TestJSONParsing:
 
     def test_parse_json_array_raises_error(self, mock_env_vars):
         """Test that JSON array (not object) raises ValueError."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         with patch.object(client, '_generate_with_retry') as mock_generate:
             mock_generate.return_value = json.dumps(["item1", "item2"])
@@ -141,7 +141,7 @@ class TestRateLimiting:
 
     def test_rate_limit_delay_is_applied(self, mock_env_vars):
         """Test that rate limit delay is applied between requests."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         import time
         start_time = time.time()
@@ -163,7 +163,7 @@ class TestRetryLogic:
 
     def test_retry_on_rate_limit_error(self, mock_env_vars, sample_llm_response):
         """Test retry on rate limit error."""
-        client = LLMClient(model_name="gemini/gemini-2.0-flash-lite")
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         with patch('llm_analyser.llm_client.completion') as mock_completion:
             # First call raises RateLimitError, second succeeds

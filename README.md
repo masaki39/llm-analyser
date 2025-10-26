@@ -167,7 +167,7 @@ uv run python main.py --list-models
 | `--input` | `-i` | Path to input CSV file | Yes |
 | `--columns` | `-c` | Comma-separated list of columns to use as LLM input | Yes |
 | `--output` | `-o` | Path to output CSV file | Yes (unless `--preview`) |
-| `--model` | `-m` | LLM model name (default: `gemini/gemini-2.0-flash-lite`) | No |
+| `--model` | `-m` | LLM model name (default: `gemini/gemini-2.5-flash-lite`) | No |
 | `--list-models` | | List supported models and exit | No |
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
@@ -298,7 +298,8 @@ LLM Analyser supports three levels of validation through LiteLLM:
 LLM Analyser supports 100+ models via LiteLLM. Common examples:
 
 **Gemini Models:**
-- `gemini/gemini-2.0-flash-lite` - Fast and lightweight (default)
+- `gemini/gemini-2.5-flash-lite` - Fast and lightweight (default)
+- `gemini/gemini-2.0-flash-lite` - Fast and lightweight
 - `gemini/gemini-1.5-pro` - High quality
 - `gemini/gemini-1.5-flash` - Balanced
 
@@ -317,7 +318,7 @@ For the full list, run `uv run python main.py --list-models` or visit [LiteLLM P
 
 Key configuration options can be found in `llm_analyser/config.py`:
 
-- `DEFAULT_MODEL`: Default model (gemini/gemini-2.0-flash-lite)
+- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite)
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
 - `MAX_RETRIES`: Maximum number of retry attempts (5)
 - `RETRY_MIN_WAIT`: Minimum wait time between retries (1 second)

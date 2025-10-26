@@ -44,7 +44,7 @@ Examples:
   uv run python main.py --input data/papers.csv --columns title,abstract --preview
 
   # Use a custom model
-  uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.0-flash-lite
+  uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.5-flash-lite
 
 Environment Variables:
   GEMINI_API_KEY      Gemini API key (for Gemini models)

@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 # API Configuration
-DEFAULT_MODEL = "gemini/gemini-2.0-flash-lite"
+DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
 
 # Multi-provider API key environment variables
 # LiteLLM automatically uses standard env vars for each provider
@@ -18,6 +18,7 @@ API_KEY_ENV_VARS = {
 # Supported models (examples - LiteLLM supports many more)
 SUPPORTED_MODELS = {
     # Gemini models
+    "gemini/gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite (fast, lightweight, default)",
     "gemini/gemini-2.0-flash-lite": "Gemini 2.0 Flash Lite (fast, lightweight)",
     "gemini/gemini-1.5-pro": "Gemini 1.5 Pro (high quality)",
     "gemini/gemini-1.5-flash": "Gemini 1.5 Flash (balanced)",
