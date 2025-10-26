@@ -1,7 +1,7 @@
 """Dynamic Pydantic schema generation for structured LLM outputs."""
 
 import json
-from typing import Any, Dict, List, Type, get_args, get_origin
+from typing import Dict, List, Type
 
 from pydantic import BaseModel, Field, create_model
 

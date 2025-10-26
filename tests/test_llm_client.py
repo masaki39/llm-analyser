@@ -43,8 +43,7 @@ class TestLLMClientInitialization:
     def test_init_with_explicit_api_key(self):
         """Test initialization with explicit API key."""
         client = LLMClient(
-            model_name="gemini/gemini-2.5-flash-lite",
-            api_key="explicit-test-key"
+            model_name="gemini/gemini-2.5-flash-lite", api_key="explicit-test-key"
         )
         assert client.model_name == "gemini/gemini-2.5-flash-lite"
 
@@ -85,26 +84,26 @@ class TestJSONParsing:
         """Test parsing clean JSON response."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch.object(client, '_generate_with_retry') as mock_generate:
+        with patch.object(client, "_generate_with_retry") as mock_generate:
             mock_generate.return_value = json.dumps(sample_llm_response)
 
             result = client.generate_structured_output(
-                prompt="Test prompt",
-                input_data={"test": "data"}
+                prompt="Test prompt", input_data={"test": "data"}
             )
 
             assert result == sample_llm_response
 
-    def test_parse_json_with_markdown(self, mock_env_vars, sample_llm_response_with_markdown, sample_llm_response):
+    def test_parse_json_with_markdown(
+        self, mock_env_vars, sample_llm_response_with_markdown, sample_llm_response
+    ):
         """Test parsing JSON wrapped in markdown code block."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch.object(client, '_generate_with_retry') as mock_generate:
+        with patch.object(client, "_generate_with_retry") as mock_generate:
             mock_generate.return_value = sample_llm_response_with_markdown
 
             result = client.generate_structured_output(
-                prompt="Test prompt",
-                input_data={"test": "data"}
+                prompt="Test prompt", input_data={"test": "data"}
             )
 
             assert result == sample_llm_response
@@ -113,26 +112,24 @@ class TestJSONParsing:
         """Test that invalid JSON raises ValueError."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch.object(client, '_generate_with_retry') as mock_generate:
+        with patch.object(client, "_generate_with_retry") as mock_generate:
             mock_generate.return_value = "This is not JSON"
 
             with pytest.raises(ValueError, match="Failed to parse.*JSON"):
                 client.generate_structured_output(
-                    prompt="Test prompt",
-                    input_data={"test": "data"}
+                    prompt="Test prompt", input_data={"test": "data"}
                 )
 
     def test_parse_json_array_raises_error(self, mock_env_vars):
         """Test that JSON array (not object) raises ValueError."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch.object(client, '_generate_with_retry') as mock_generate:
+        with patch.object(client, "_generate_with_retry") as mock_generate:
             mock_generate.return_value = json.dumps(["item1", "item2"])
 
             with pytest.raises(ValueError, match="must be a JSON object"):
                 client.generate_structured_output(
-                    prompt="Test prompt",
-                    input_data={"test": "data"}
+                    prompt="Test prompt", input_data={"test": "data"}
                 )
 
 
@@ -144,6 +141,7 @@ class TestRateLimiting:
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
         import time
+
         start_time = time.time()
 
         # Simulate two consecutive calls
@@ -154,6 +152,7 @@ class TestRateLimiting:
 
         # Should have at least REQUEST_DELAY between calls
         from llm_analyser.config import REQUEST_DELAY
+
         assert elapsed >= REQUEST_DELAY
 
 
@@ -165,20 +164,21 @@ class TestRetryLogic:
         """Test retry on rate limit error."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch('llm_analyser.llm_client.completion') as mock_completion:
+        with patch("llm_analyser.llm_client.completion") as mock_completion:
             # First call raises RateLimitError, second succeeds
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message.content = json.dumps(sample_llm_response)
 
             mock_completion.side_effect = [
-                RateLimitError(message="Rate limit exceeded", model="test"),
-                mock_response
+                RateLimitError(
+                    message="Rate limit exceeded", llm_provider="test", model="test"
+                ),
+                mock_response,
             ]
 
             result = client.generate_structured_output(
-                prompt="Test prompt",
-                input_data={"test": "data"}
+                prompt="Test prompt", input_data={"test": "data"}
             )
 
             # Should succeed after retry

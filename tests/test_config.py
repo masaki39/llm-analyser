@@ -1,7 +1,5 @@
 """Tests for configuration module."""
 
-import pytest
-
 from llm_analyser import config
 
 

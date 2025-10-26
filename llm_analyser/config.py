@@ -1,6 +1,5 @@
 """Configuration settings for LLM Analyser."""
 
-import os
 from pathlib import Path
 
 # API Configuration

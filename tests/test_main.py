@@ -1,7 +1,6 @@
 """Tests for main CLI module."""
 
 import sys
-from io import StringIO
 from unittest.mock import patch
 
 import pytest
@@ -16,12 +15,15 @@ class TestParseArguments:
         """Test parsing required arguments."""
         test_args = [
             "main.py",
-            "--input", "test.csv",
-            "--columns", "col1,col2",
-            "--output", "output.csv"
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1,col2",
+            "--output",
+            "output.csv",
         ]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
             assert args.input == "test.csv"
@@ -32,27 +34,26 @@ class TestParseArguments:
         """Test parsing with model option."""
         test_args = [
             "main.py",
-            "--input", "test.csv",
-            "--columns", "col1",
-            "--output", "output.csv",
-            "--model", "gpt-4o"
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1",
+            "--output",
+            "output.csv",
+            "--model",
+            "gpt-4o",
         ]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
             assert args.model == "gpt-4o"
 
     def test_parse_with_preview_option(self):
         """Test parsing with preview option."""
-        test_args = [
-            "main.py",
-            "--input", "test.csv",
-            "--columns", "col1",
-            "--preview"
-        ]
+        test_args = ["main.py", "--input", "test.csv", "--columns", "col1", "--preview"]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
             assert args.preview is True
@@ -61,40 +62,25 @@ class TestParseArguments:
         """Test parsing with preview rows option."""
         test_args = [
             "main.py",
-            "--input", "test.csv",
-            "--columns", "col1",
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1",
             "--preview",
-            "--preview-rows", "5"
+            "--preview-rows",
+            "5",
         ]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
             assert args.preview_rows == 5
 
-    def test_parse_with_column_prefix_option(self):
-        """Test parsing with column prefix option."""
-        test_args = [
-            "main.py",
-            "--input", "test.csv",
-            "--columns", "col1",
-            "--output", "output.csv",
-            "--column-prefix", "custom"
-        ]
-
-        with patch.object(sys, 'argv', test_args):
-            args = parse_arguments()
-
-            assert args.column_prefix == "custom"
-
     def test_parse_with_list_models_option(self):
         """Test parsing with list-models option."""
-        test_args = [
-            "main.py",
-            "--list-models"
-        ]
+        test_args = ["main.py", "--list-models"]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
             assert args.list_models is True
@@ -103,14 +89,18 @@ class TestParseArguments:
         """Test parsing with short option names."""
         test_args = [
             "main.py",
-            "-i", "test.csv",
-            "-c", "col1,col2",
-            "-o", "output.csv",
-            "-m", "gpt-4o",
-            "-p"
+            "-i",
+            "test.csv",
+            "-c",
+            "col1,col2",
+            "-o",
+            "output.csv",
+            "-m",
+            "gpt-4o",
+            "-p",
         ]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
             assert args.input == "test.csv"
@@ -145,46 +135,71 @@ class TestMainExecution:
         """Test that --list-models exits after printing."""
         test_args = ["main.py", "--list-models"]
 
-        with patch.object(sys, 'argv', test_args):
+        with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
                 from main import main
+
                 main()
 
             assert exc_info.value.code == 0
+            captured = capsys.readouterr()
+            assert "SUPPORTED MODELS" in captured.out
 
-    def test_main_requires_output_without_preview(self, capsys):
-        """Test that main requires --output unless --preview is used."""
-        test_args = [
-            "main.py",
-            "--input", "test.csv",
-            "--columns", "col1"
-        ]
+    def test_main_requires_input_and_columns(self, capsys):
+        """Test that main requires --input and --columns without --list-models."""
+        test_args = ["main.py"]
 
-        with patch.object(sys, 'argv', test_args):
-            with pytest.raises(SystemExit):
+        with patch.object(sys, "argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
                 from main import main
+
                 main()
 
+            assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "output is required" in captured.out.lower()
+            assert "required: --input/-i, --columns/-c" in captured.out
+
+    def test_main_requires_columns_when_only_input(self, capsys):
+        """Test that main requires --columns when only --input is provided."""
+        test_args = ["main.py", "--input", "test.csv"]
+
+        with patch.object(sys, "argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
+                from main import main
+
+                main()
+
+            assert exc_info.value.code == 1
+            captured = capsys.readouterr()
+            assert "required: --input/-i, --columns/-c" in captured.out
+
+    def test_main_requires_input_when_only_columns(self, capsys):
+        """Test that main requires --input when only --columns is provided."""
+        test_args = ["main.py", "--columns", "col1,col2"]
+
+        with patch.object(sys, "argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
+                from main import main
+
+                main()
+
+            assert exc_info.value.code == 1
+            captured = capsys.readouterr()
+            assert "required: --input/-i, --columns/-c" in captured.out
 
     def test_main_accepts_preview_without_output(self):
         """Test that main accepts --preview without --output."""
-        test_args = [
-            "main.py",
-            "--input", "test.csv",
-            "--columns", "col1",
-            "--preview"
-        ]
+        test_args = ["main.py", "--input", "test.csv", "--columns", "col1", "--preview"]
 
-        with patch.object(sys, 'argv', test_args):
-            with patch('main.get_user_prompt', return_value="Test prompt"):
-                with patch('main.LLMClient'):
-                    with patch('main.CSVProcessor'):
+        with patch.object(sys, "argv", test_args):
+            with patch("main.get_user_prompt", return_value="Test prompt"):
+                with patch("main.LLMClient"):
+                    with patch("main.CSVProcessor"):
                         # Should not raise SystemExit for missing --output
                         # (will fail later due to missing file, but argument parsing should pass)
                         try:
                             from main import main
+
                             main()
                         except (FileNotFoundError, SystemExit):
                             pass  # Expected due to missing test.csv

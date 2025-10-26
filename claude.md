@@ -308,7 +308,94 @@ For production use, consider:
 2. **Implement Logic**: Add feature in appropriate module
 3. **Update CLI**: Modify `main.py` to expose new options
 4. **Document**: Update `README.md` with usage examples
-5. **Test**: Manual testing with sample data
+5. **Test**: Write and run tests (see Testing Workflow below)
+
+### Testing Workflow
+
+When making code changes, always follow this workflow:
+
+1. **Write Tests First**: Add or update tests in `tests/` directory before implementing changes
+   - New features: Write tests covering happy path and edge cases
+   - Bug fixes: Add regression tests to prevent recurrence
+   - Refactoring: Maintain existing test coverage
+
+2. **Run Relevant Tests**: Run affected test modules during development
+   ```bash
+   uv run pytest tests/test_module.py -v
+   ```
+
+3. **Run Full Test Suite**: Before committing, run all tests to catch regressions
+   ```bash
+   uv run pytest tests/ -v
+   ```
+
+4. **Fix Failing Tests**: Ensure all tests pass before committing changes
+   - Update test code if API signatures change
+   - Fix implementation if tests reveal bugs
+   - Never commit with failing tests
+
+5. **Update Test Documentation**: Keep test docstrings clear and descriptive
+   - Explain what is being tested
+   - Document expected behavior
+   - Note any special test setup requirements
+
+### Automated Testing with Pre-commit Hooks
+
+This project uses pre-commit hooks to automatically run tests before each commit.
+
+**Setup (one-time)**:
+```bash
+# Install pre-commit hooks
+uv run pre-commit install
+```
+
+**Usage**:
+- Tests run automatically when you commit
+- If tests fail, the commit is blocked
+- Fix the issues and try committing again
+
+**Bypass hooks (use sparingly)**:
+```bash
+# Skip pre-commit hooks for a specific commit
+git commit --no-verify -m "message"
+```
+
+**Manual pre-commit run**:
+```bash
+# Run all hooks on all files
+uv run pre-commit run --all-files
+
+# Run specific hook
+uv run pre-commit run pytest --all-files
+```
+
+**What gets checked**:
+- ✅ All pytest tests must pass
+- ✅ Code formatting (Ruff)
+- ✅ Code linting (Ruff)
+- ✅ Trailing whitespace removal
+- ✅ YAML file validation
+- ✅ No large files added
+- ✅ No merge conflicts
+- ✅ No private keys committed
+
+**Test Coverage Goals**:
+- Aim for high coverage of critical paths
+- All public APIs should have tests
+- Edge cases and error conditions must be tested
+- Integration points between modules need coverage
+
+**Running Specific Test Categories**:
+```bash
+# Run only unit tests
+uv run pytest -m unit
+
+# Run with coverage report
+uv run pytest --cov=llm_analyser tests/
+
+# Run with verbose output
+uv run pytest -v -s
+```
 
 ### Code Style
 

@@ -1,6 +1,5 @@
 """Pytest configuration and fixtures."""
 
-import json
 from pathlib import Path
 
 import pandas as pd
@@ -10,19 +9,21 @@ import pytest
 @pytest.fixture
 def sample_csv_data():
     """Sample CSV data for testing."""
-    return pd.DataFrame({
-        "title": [
-            "Study of miRNA in cancer",
-            "Gene expression analysis",
-            "Protein interaction networks"
-        ],
-        "abstract": [
-            "This study investigates the role of microRNA in cancer progression.",
-            "We analyzed gene expression patterns across multiple tissues.",
-            "Network analysis revealed key protein interactions."
-        ],
-        "year": [2023, 2024, 2023]
-    })
+    return pd.DataFrame(
+        {
+            "title": [
+                "Study of miRNA in cancer",
+                "Gene expression analysis",
+                "Protein interaction networks",
+            ],
+            "abstract": [
+                "This study investigates the role of microRNA in cancer progression.",
+                "We analyzed gene expression patterns across multiple tissues.",
+                "Network analysis revealed key protein interactions.",
+            ],
+            "year": [2023, 2024, 2023],
+        }
+    )
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def sample_llm_response():
     return {
         "category": "medical_research",
         "sentiment": "neutral",
-        "key_topics": ["miRNA", "cancer", "biomarker"]
+        "key_topics": ["miRNA", "cancer", "biomarker"],
     }
 
 

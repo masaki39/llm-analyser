@@ -25,9 +25,7 @@ class CSVProcessor:
         """
         self.llm_client = llm_client
 
-    def _should_process_row(
-        self, row: pd.Series, new_column_names: List[str]
-    ) -> bool:
+    def _should_process_row(self, row: pd.Series, new_column_names: List[str]) -> bool:
         """Check if a row should be processed (has empty values in new columns).
 
         Args:
@@ -112,7 +110,9 @@ class CSVProcessor:
             new_column_names = []
 
         # Process each row
-        logger.info(f"\nProcessing rows with LLM (model: {self.llm_client.model_name})...")
+        logger.info(
+            f"\nProcessing rows with LLM (model: {self.llm_client.model_name})..."
+        )
         logger.info(f"Using columns: {columns}")
         logger.info(f"Prompt: {prompt}")
         if response_model:
@@ -128,10 +128,17 @@ class CSVProcessor:
             row_num = idx + 1
 
             # Check if row should be skipped (resume mode)
-            if resume and new_column_names and not self._should_process_row(row, new_column_names):
+            if (
+                resume
+                and new_column_names
+                and not self._should_process_row(row, new_column_names)
+            ):
                 logger.info(f"Row {row_num}/{len(df)}: ✓ Skipping (already processed)")
                 # Keep existing data
-                existing_data = {col: row[col] if col in row.index else None for col in new_column_names}
+                existing_data = {
+                    col: row[col] if col in row.index else None
+                    for col in new_column_names
+                }
                 results.append(existing_data if existing_data else {})
                 skipped += 1
                 continue
@@ -185,7 +192,7 @@ class CSVProcessor:
         logger.info(f"  Errors: {len(errors)}")
 
         if errors:
-            logger.warning(f"\nErrors encountered:")
+            logger.warning("\nErrors encountered:")
             for error in errors[:10]:  # Show first 10 errors
                 logger.warning(f"  - {error}")
             if len(errors) > 10:

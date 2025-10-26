@@ -8,7 +8,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from llm_analyser.config import API_KEY_ENV_VARS, DATA_DIR, DEFAULT_MODEL, SUPPORTED_MODELS
+from llm_analyser.config import (
+    API_KEY_ENV_VARS,
+    DATA_DIR,
+    DEFAULT_MODEL,
+    SUPPORTED_MODELS,
+)
 from llm_analyser.llm_client import LLMClient
 from llm_analyser.processor import CSVProcessor
 from llm_analyser.schemas import (
@@ -19,8 +24,8 @@ from llm_analyser.schemas import (
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(message)s',  # Simple format for user-facing output
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(message)s",  # Simple format for user-facing output
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 logger = logging.getLogger(__name__)
@@ -35,7 +40,7 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Process CSV files with LLM to generate structured data columns",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"""
+        epilog="""
 Examples:
   # Process a CSV file with interactive prompt
   uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv
@@ -57,7 +62,6 @@ Environment Variables:
         "--input",
         "-i",
         type=str,
-        required=True,
         help="Path to input CSV file",
     )
 
@@ -65,7 +69,6 @@ Environment Variables:
         "--columns",
         "-c",
         type=str,
-        required=True,
         help="Comma-separated list of columns to use as LLM input (e.g., 'title,abstract,keywords')",
     )
 
@@ -181,6 +184,12 @@ def main() -> None:
         list_supported_models()
         sys.exit(0)
 
+    # Validate required arguments (only if not using --list-models)
+    if not args.input or not args.columns:
+        print("Error: the following arguments are required: --input/-i, --columns/-c")
+        print("Use --help for more information")
+        sys.exit(1)
+
     # Validate schema/fields options
     if args.schema and args.fields:
         print("Error: Cannot specify both --schema and --fields")
@@ -231,11 +240,13 @@ def main() -> None:
         logger.info(f"✓ LLM client initialized (provider: {llm_client.provider})")
     except ValueError as e:
         logger.error(f"Error: {e}")
-        logger.error(f"\nPlease set the appropriate API key for your chosen model.")
-        logger.error(f"For example:")
+        logger.error("\nPlease set the appropriate API key for your chosen model.")
+        logger.error("For example:")
         for provider, env_var in API_KEY_ENV_VARS.items():
-            logger.error(f"  export {env_var}='your-api-key-here'  # For {provider} models")
-        logger.error(f"\nOr create a .env file with the appropriate API key.")
+            logger.error(
+                f"  export {env_var}='your-api-key-here'  # For {provider} models"
+            )
+        logger.error("\nOr create a .env file with the appropriate API key.")
         sys.exit(1)
 
     # Initialize processor
