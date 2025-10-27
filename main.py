@@ -8,15 +8,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from llm_analyser.config import (
+from llman.config import (
     API_KEY_ENV_VARS,
     DATA_DIR,
     DEFAULT_MODEL,
     SUPPORTED_MODELS,
 )
-from llm_analyser.llm_client import LLMClient
-from llm_analyser.processor import CSVProcessor
-from llm_analyser.schemas import (
+from llman.llm_client import LLMClient
+from llman.processor import CSVProcessor
+from llman.schemas import (
     create_output_model_from_string,
     create_output_model_from_json,
 )

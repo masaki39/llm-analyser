@@ -1,6 +1,6 @@
 """Tests for configuration module."""
 
-from llm_analyser import config
+from llman import config
 
 
 class TestConfig:

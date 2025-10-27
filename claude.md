@@ -1,8 +1,8 @@
-# LLM Analyser - Development Notes
+# llman - Development Notes
 
 ## Project Overview
 
-LLM Analyser is a Python-based command-line tool designed to process CSV data using Large Language Models (LLMs). The tool enables users to augment their datasets with AI-generated structured outputs by processing each row sequentially through an LLM API.
+llman (short for "LLM Analyser") is a Python-based command-line tool designed to process CSV data using Large Language Models (LLMs). The tool enables users to augment their datasets with AI-generated structured outputs by processing each row sequentially through an LLM API.
 
 **Version 0.2.0** introduces LiteLLM integration for multi-provider support, enabling seamless switching between Gemini, OpenAI, Anthropic, and 100+ other LLM providers with enforced JSON structured output.
 
@@ -13,10 +13,11 @@ LLM Analyser is a Python-based command-line tool designed to process CSV data us
 The project is structured into modular components for maintainability and separation of concerns:
 
 ```
-llm_analyser/
+llman/
 ├── config.py       # Configuration constants and settings
 ├── llm_client.py   # LLM API client with retry logic
-└── processor.py    # CSV processing orchestration
+├── processor.py    # CSV processing orchestration
+└── schemas.py      # Output schema definitions
 ```
 
 ### Design Decisions
@@ -411,6 +412,7 @@ Minimal dependency philosophy:
 - `pandas`: CSV processing (industry standard)
 - `tenacity`: Retry logic (battle-tested)
 - `python-dotenv`: Environment management (standard practice)
+- `pydantic`: Schema validation for structured output
 
 **Rationale**: Each dependency must provide significant value and be well-maintained. LiteLLM consolidates what would otherwise be multiple provider-specific dependencies.
 
@@ -421,7 +423,7 @@ Minimal dependency philosophy:
 Current approach: Git repository + uv
 
 **Future Options**:
-- PyPI package: `pip install llm-analyser`
+- PyPI package: `pip install llman`
 - Docker container: Isolated environment
 - Pre-built binaries: PyInstaller for non-Python users
 

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from litellm.exceptions import RateLimitError
 
-from llm_analyser.llm_client import LLMClient
+from llman.llm_client import LLMClient
 
 
 class TestLLMClientInitialization:
@@ -151,7 +151,7 @@ class TestRateLimiting:
         elapsed = time.time() - start_time
 
         # Should have at least REQUEST_DELAY between calls
-        from llm_analyser.config import REQUEST_DELAY
+        from llman.config import REQUEST_DELAY
 
         assert elapsed >= REQUEST_DELAY
 
@@ -164,7 +164,7 @@ class TestRetryLogic:
         """Test retry on rate limit error."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch("llm_analyser.llm_client.completion") as mock_completion:
+        with patch("llman.llm_client.completion") as mock_completion:
             # First call raises RateLimitError, second succeeds
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]

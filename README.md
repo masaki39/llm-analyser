@@ -1,6 +1,6 @@
-# LLM Analyser
+# LLM Analyser (llman)
 
-A Python tool for processing CSV data using Large Language Models (LLMs) to generate structured output. The tool processes CSV files row-by-row, sends selected columns to an LLM with a custom prompt, and appends the generated structured data as new columns.
+**llman** is a Python tool for processing CSV data using Large Language Models (LLMs) to generate structured output. The name "llman" is short for "LLM Analyser". The tool processes CSV files row-by-row, sends selected columns to an LLM with a custom prompt, and appends the generated structured data as new columns.
 
 Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider support across Gemini, OpenAI, Anthropic, and more.
 
@@ -30,7 +30,7 @@ Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider suppo
 1. Clone or download this repository:
 
 ```bash
-cd llm-analyser
+cd llman
 ```
 
 2. Install dependencies using uv:
@@ -316,7 +316,7 @@ For the full list, run `uv run python main.py --list-models` or visit [LiteLLM P
 
 ## Configuration
 
-Key configuration options can be found in `llm_analyser/config.py`:
+Key configuration options can be found in `llman/config.py`:
 
 - `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite)
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
@@ -328,13 +328,14 @@ Key configuration options can be found in `llm_analyser/config.py`:
 ## Project Structure
 
 ```
-llm-analyser/
+llman/
 ├── main.py                 # CLI entry point
-├── llm_analyser/
+├── llman/
 │   ├── __init__.py        # Package initialization
 │   ├── config.py          # Configuration settings
-│   ├── llm_client.py      # Gemini API client with retry logic
-│   └── processor.py       # CSV processing logic
+│   ├── llm_client.py      # LLM API client with retry logic
+│   ├── processor.py       # CSV processing logic
+│   └── schemas.py         # Output schema definitions
 ├── data/                   # Input CSV files
 ├── pyproject.toml         # Project dependencies
 ├── .env.example           # Example environment variables
@@ -441,7 +442,7 @@ uv run pytest
 Run tests with coverage:
 
 ```bash
-uv run pytest --cov=llm_analyser --cov-report=html
+uv run pytest --cov=llman --cov-report=html
 ```
 
 Run specific test file:
