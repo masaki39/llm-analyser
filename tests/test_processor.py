@@ -156,6 +156,39 @@ class TestProcessCSV:
         assert output_df.columns.tolist().count("score") == 1
         assert list(output_df["category"]) == ["first", "first", "first"]
 
+    def test_process_csv_retries_failed_rows(
+        self, sample_csv_file, tmp_path, mock_env_vars
+    ):
+        """Ensure failed rows are retried before finalizing output."""
+        from llman.llm_client import LLMClient
+
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
+        processor = CSVProcessor(llm_client=client)
+        output_path = tmp_path / "output.csv"
+
+        with patch.object(client, "generate_structured_output") as mock_generate:
+            mock_generate.side_effect = [
+                ValueError("Temporary"),
+                {"category": "second", "score": 0.5},
+                {"category": "third", "score": 0.6},
+                {"category": "first-retry", "score": 0.9},
+            ]
+
+            processor.process_csv(
+                input_path=sample_csv_file,
+                output_path=output_path,
+                columns=["title"],
+                prompt="Test",
+            )
+
+            output_df = pd.read_csv(output_path)
+            assert list(output_df["category"]) == [
+                "first-retry",
+                "second",
+                "third",
+            ]
+            assert mock_generate.call_count == 4
+
 
 class TestPreviewSample:
     """Test preview sample functionality."""

@@ -120,12 +120,13 @@ class CSVProcessor:
         logger.info("")
 
         results = []
-        errors = []
+        failed_rows = []
         processed = 0
         skipped = 0
 
         for idx, row in df.iterrows():
             row_num = idx + 1
+            result_position = len(results)
 
             # Check if row should be skipped (resume mode)
             if (
@@ -159,12 +160,26 @@ class CSVProcessor:
                 logger.info(f"Row {row_num}/{len(df)}: ✓ Success")
 
             except Exception as e:
-                error_msg = f"Row {row_num}: {str(e)}"
-                errors.append(error_msg)
                 logger.error(f"Row {row_num}/{len(df)}: ✗ Error: {e}")
                 # Add empty result to maintain row alignment
                 results.append({})
                 processed += 1
+                failed_rows.append(
+                    {
+                        "position": result_position,
+                        "row": row.copy(),
+                        "row_num": row_num,
+                        "error": str(e),
+                    }
+                )
+
+        # Attempt fallback retries for failed rows before finalizing results
+        if failed_rows:
+            failed_rows = self._retry_failed_rows(
+                failed_rows, results, columns, prompt, response_model
+            )
+
+        errors = [f"Row {info['row_num']}: {info['error']}" for info in failed_rows]
 
         # Convert results to DataFrame columns
         if results:
@@ -201,6 +216,57 @@ class CSVProcessor:
                 logger.warning(f"  ... and {len(errors) - 10} more errors")
 
         logger.info(f"{'='*60}")
+
+    def _retry_failed_rows(
+        self,
+        failed_rows,
+        results: List[dict],
+        columns: List[str],
+        prompt: str,
+        response_model: Optional[Type[BaseModel]] = None,
+    ):
+        """Retry rows that failed during the initial pass.
+
+        Args:
+            failed_rows: List of failure metadata dicts.
+            results: List of per-row outputs to update.
+            columns: Columns to read from the input row.
+            prompt: Prompt to send to the LLM.
+            response_model: Optional response schema.
+
+        Returns:
+            List of failure metadata that still failed after retry.
+        """
+        logger.info(
+            f"\nRetrying {len(failed_rows)} failed row(s) to avoid empty outputs..."
+        )
+        remaining_failures = []
+
+        for failure in failed_rows:
+            row = failure["row"]
+            row_num = failure["row_num"]
+            position = failure["position"]
+
+            try:
+                input_data = {col: row[col] for col in columns}
+                output = self.llm_client.generate_structured_output(
+                    prompt, input_data, response_model
+                )
+                results[position] = output
+                logger.info(f"Row {row_num}: ✓ Success on fallback retry")
+            except Exception as retry_error:
+                failure["error"] = str(retry_error)
+                remaining_failures.append(failure)
+                logger.error(f"Row {row_num}: ✗ Fallback retry failed: {retry_error}")
+
+        if remaining_failures:
+            logger.warning(
+                f"\nUnable to recover {len(remaining_failures)} row(s) after fallback."
+            )
+        else:
+            logger.info("All failed rows recovered successfully.")
+
+        return remaining_failures
 
     def preview_sample(
         self,

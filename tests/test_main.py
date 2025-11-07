@@ -117,6 +117,7 @@ class TestParseArguments:
             "-p",
             "-f",
             "flag:bool",
+            "-R",
             "-l",
         ]
 
@@ -129,6 +130,7 @@ class TestParseArguments:
             assert args.model == "gpt-4o"
             assert args.preview is True
             assert args.fields == "flag:bool"
+            assert args.no_resume is True
             assert args.list_models is True
 
 

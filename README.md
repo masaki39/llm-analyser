@@ -11,6 +11,7 @@ Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider suppo
 - **Interactive Prompts**: Specify analysis tasks interactively when running the program
 - **Flexible Column Selection**: Choose any combination of columns to pass to the LLM
 - **Robust Error Handling**: Automatic retry logic with exponential backoff for API errors
+- **Automatic Recovery**: Failed rows are retried once more before writing the CSV, reducing blank outputs
 - **Rate Limiting**: Built-in delays to respect API rate limits
 - **Sequential Processing**: Process rows one-by-one to avoid overwhelming the API
 - **Preview Mode**: Test your prompt on sample rows before processing the entire dataset
