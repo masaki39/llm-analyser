@@ -209,8 +209,8 @@ uv run python main.py --list
 | `--list` | `-l` | List supported models and exit | No |
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
-| `--column-prefix` | | Prefix for new columns (default: `llm_output`) | No |
 | `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`) | No |
+| `--no-resume` | `-R` | Reprocess all rows even if output exists | No |
 
 ## Best Practices for Field Definitions
 

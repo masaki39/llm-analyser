@@ -123,6 +123,7 @@ Environment Variables:
 
     parser.add_argument(
         "--no-resume",
+        "-R",
         action="store_true",
         help="Disable resume mode (always process all rows, even if output exists)",
     )
