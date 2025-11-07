@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from llman.processor import CSVProcessor
+from llman.schemas import create_output_model_from_string
 
 
 class TestCSVProcessorInit:
@@ -118,6 +119,42 @@ class TestProcessCSV:
             # Should have processed all rows (with empty dict for failed row)
             output_df = pd.read_csv(output_path)
             assert len(output_df) == 3
+
+    def test_process_csv_resume_overwrites_columns(
+        self, sample_csv_file, tmp_path, mock_env_vars
+    ):
+        """Ensure resume updates existing columns instead of duplicating them."""
+        from llman.llm_client import LLMClient
+
+        client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
+        processor = CSVProcessor(llm_client=client)
+        output_path = tmp_path / "output.csv"
+        response_model = create_output_model_from_string("category:str,score:float")
+
+        with patch.object(client, "generate_structured_output") as mock_generate:
+            mock_generate.return_value = {"category": "first", "score": 0.9}
+            processor.process_csv(
+                input_path=sample_csv_file,
+                output_path=output_path,
+                columns=["title"],
+                prompt="Test",
+                response_model=response_model,
+            )
+
+        with patch.object(client, "generate_structured_output") as resume_generate:
+            processor.process_csv(
+                input_path=sample_csv_file,
+                output_path=output_path,
+                columns=["title"],
+                prompt="Test",
+                response_model=response_model,
+            )
+            assert resume_generate.call_count == 0
+
+        output_df = pd.read_csv(output_path)
+        assert output_df.columns.tolist().count("category") == 1
+        assert output_df.columns.tolist().count("score") == 1
+        assert list(output_df["category"]) == ["first", "first", "first"]
 
 
 class TestPreviewSample:

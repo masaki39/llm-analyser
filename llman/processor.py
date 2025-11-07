@@ -170,11 +170,13 @@ class CSVProcessor:
         if results:
             # Flatten nested JSON into columns
             result_df = pd.json_normalize(results)
+            result_df = result_df.reindex(df.index)
 
-            # Combine with original DataFrame
-            output_df = pd.concat([df, result_df], axis=1)
-        else:
-            output_df = df
+            # Overwrite existing columns (or create new ones) with LLM output
+            for col in result_df.columns:
+                df[col] = result_df[col]
+
+        output_df = df
 
         # Save output
         logger.info(f"\nSaving results to {output_path}...")
