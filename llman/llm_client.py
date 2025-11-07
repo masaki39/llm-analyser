@@ -23,6 +23,7 @@ from .config import (
     USE_JSON_MODE,
     get_default_model,
 )
+from .utils import format_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,7 @@ class LLMClient:
                 delay = RETRY_BACKOFF_SCHEDULE[attempt]
                 logger.warning(
                     f"LLM request failed (attempt {attempt + 1}/{MAX_RETRIES}): "
-                    f"{self._format_exception(exc)}. Retrying in {delay:.1f}s..."
+                    f"{format_error_message(exc, limit=300)}. Retrying in {delay:.1f}s..."
                 )
                 time.sleep(delay)
                 attempt += 1
@@ -294,11 +295,3 @@ Output (JSON only):"""
             ) from e
         except Exception as e:
             raise ValueError(f"Error generating structured output: {e}") from e
-
-    @staticmethod
-    def _format_exception(exc: Exception, limit: int = 300) -> str:
-        """Return a trimmed exception string for logging."""
-        message = str(exc).strip()
-        if len(message) > limit:
-            message = message[:limit] + "... (truncated)"
-        return message or exc.__class__.__name__

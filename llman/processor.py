@@ -10,18 +10,9 @@ from pydantic import BaseModel
 
 from .llm_client import LLMClient
 from .schemas import get_field_names
+from .utils import format_error_message
 
 logger = logging.getLogger(__name__)
-
-
-def _format_error_message(error: Exception | str, limit: int = 400) -> str:
-    """Trim error output to avoid flooding logs with large payloads."""
-    message = str(error).strip()
-    if len(message) > limit:
-        message = message[:limit] + "... (truncated)"
-    if not message and isinstance(error, Exception):
-        return error.__class__.__name__
-    return message
 
 
 class CSVProcessor:
@@ -170,7 +161,9 @@ class CSVProcessor:
                 logger.info(f"Row {row_num}/{len(df)}: ✓ Success")
 
             except Exception as e:
-                logger.error(f"Row {row_num}/{len(df)}: ✗ Error: {e}")
+                logger.error(
+                    f"Row {row_num}/{len(df)}: ✗ Error: {format_error_message(e)}"
+                )
                 # Add empty result to maintain row alignment
                 results.append({})
                 processed += 1
@@ -179,7 +172,7 @@ class CSVProcessor:
                         "position": result_position,
                         "row": row.copy(),
                         "row_num": row_num,
-                        "error": str(e),
+                        "error": format_error_message(e),
                     }
                 )
 
@@ -265,7 +258,7 @@ class CSVProcessor:
                 results[position] = output
                 logger.info(f"Row {row_num}: ✓ Success on fallback retry")
             except Exception as retry_error:
-                formatted = _format_error_message(retry_error)
+                formatted = format_error_message(retry_error)
                 failure["error"] = formatted
                 remaining_failures.append(failure)
                 logger.error(f"Row {row_num}: ✗ Fallback retry failed: {formatted}")
@@ -345,6 +338,6 @@ class CSVProcessor:
                 logger.info(json.dumps(output, ensure_ascii=False, indent=2))
 
             except Exception as e:
-                logger.error(f"\n✗ Error: {e}")
+                logger.error(f"\n✗ Error: {format_error_message(e)}")
 
             logger.info("")
