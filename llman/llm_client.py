@@ -15,20 +15,11 @@ from litellm.exceptions import (
     Timeout,
 )
 from pydantic import BaseModel
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
-
 from .config import (
     API_KEY_ENV_VARS,
     MAX_RETRIES,
     REQUEST_DELAY,
-    RETRY_MAX_WAIT,
-    RETRY_MIN_WAIT,
-    RETRY_MULTIPLIER,
+    RETRY_BACKOFF_SCHEDULE,
     USE_JSON_MODE,
     get_default_model,
 )
@@ -157,23 +148,6 @@ class LLMClient:
             time.sleep(REQUEST_DELAY - elapsed)
         self.last_request_time = time.time()
 
-    @retry(
-        retry=retry_if_exception_type(
-            (
-                RateLimitError,
-                ServiceUnavailableError,
-                APIError,
-                Timeout,
-            )
-        ),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(
-            multiplier=RETRY_MULTIPLIER,
-            min=RETRY_MIN_WAIT,
-            max=RETRY_MAX_WAIT,
-        ),
-        reraise=True,
-    )
     def _generate_with_retry(
         self, messages: list, response_model: Optional[Type[BaseModel]] = None
     ) -> str:
@@ -189,27 +163,41 @@ class LLMClient:
         Raises:
             Various LiteLLM exceptions if retries are exhausted.
         """
-        self._rate_limit_delay()
+        attempt = 0
 
-        # Build completion parameters
-        completion_params = {
-            "model": self.model_name,
-            "messages": messages,
-        }
+        while attempt < MAX_RETRIES:
+            self._rate_limit_delay()
 
-        # Add response format based on whether we have a schema
-        if response_model is not None:
-            if self.supports_schema:
-                # Use Pydantic model directly (LiteLLM will handle conversion)
-                completion_params["response_format"] = response_model
-            else:
-                # Fallback to json_object mode
+            completion_params = {
+                "model": self.model_name,
+                "messages": messages,
+            }
+
+            if response_model is not None:
+                if self.supports_schema:
+                    completion_params["response_format"] = response_model
+                else:
+                    completion_params["response_format"] = {"type": "json_object"}
+            elif USE_JSON_MODE:
                 completion_params["response_format"] = {"type": "json_object"}
-        elif USE_JSON_MODE:
-            completion_params["response_format"] = {"type": "json_object"}
 
-        response = completion(**completion_params)
-        return response.choices[0].message.content
+            try:
+                response = completion(**completion_params)
+                return response.choices[0].message.content
+
+            except (RateLimitError, ServiceUnavailableError, APIError, Timeout) as exc:
+                if attempt >= len(RETRY_BACKOFF_SCHEDULE):
+                    raise
+
+                delay = RETRY_BACKOFF_SCHEDULE[attempt]
+                logger.warning(
+                    f"LLM request failed (attempt {attempt + 1}/{MAX_RETRIES}): "
+                    f"{self._format_exception(exc)}. Retrying in {delay:.1f}s..."
+                )
+                time.sleep(delay)
+                attempt += 1
+
+        raise RuntimeError("LLM retry logic exhausted unexpectedly")
 
     def generate_structured_output(
         self,
@@ -306,3 +294,11 @@ Output (JSON only):"""
             ) from e
         except Exception as e:
             raise ValueError(f"Error generating structured output: {e}") from e
+
+    @staticmethod
+    def _format_exception(exc: Exception, limit: int = 300) -> str:
+        """Return a trimmed exception string for logging."""
+        message = str(exc).strip()
+        if len(message) > limit:
+            message = message[:limit] + "... (truncated)"
+        return message or exc.__class__.__name__

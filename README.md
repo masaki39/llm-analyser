@@ -354,9 +354,8 @@ Key configuration options can be found in `llman/config.py`:
 
 - `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAN_DEFAULT_MODEL` in `.env`.
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
-- `MAX_RETRIES`: Maximum number of retry attempts (5)
-- `RETRY_MIN_WAIT`: Minimum wait time between retries (1 second)
-- `RETRY_MAX_WAIT`: Maximum wait time between retries (60 seconds)
+- `MAX_RETRIES`: Maximum number of retry attempts (`len(RETRY_BACKOFF_SCHEDULE) + 1`)
+- `RETRY_BACKOFF_SCHEDULE`: Fixed delays between retries (`[1, 2, 3, 5, 10, 10, 10, 10, 10]` seconds)
 - `REQUEST_DELAY`: Delay between API requests (0.5 seconds)
 
 ## Project Structure

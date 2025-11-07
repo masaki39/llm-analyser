@@ -92,10 +92,8 @@ SUPPORTED_MODELS = {
 }
 
 # Retry Configuration
-MAX_RETRIES = 5
-RETRY_MIN_WAIT = 1  # seconds
-RETRY_MAX_WAIT = 60  # seconds
-RETRY_MULTIPLIER = 2  # exponential backoff multiplier
+RETRY_BACKOFF_SCHEDULE = [1, 2, 3, 5, 10, 10, 10, 10, 10]  # seconds
+MAX_RETRIES = len(RETRY_BACKOFF_SCHEDULE) + 1  # initial attempt + retries
 
 # Rate Limiting
 RATE_LIMIT_CODES = [429]  # HTTP status codes that trigger rate limit retry

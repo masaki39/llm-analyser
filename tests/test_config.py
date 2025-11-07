@@ -59,10 +59,8 @@ class TestConfig:
 
     def test_retry_config(self):
         """Test retry configuration values."""
-        assert config.MAX_RETRIES == 5
-        assert config.RETRY_MIN_WAIT == 1
-        assert config.RETRY_MAX_WAIT == 60
-        assert config.RETRY_MULTIPLIER == 2
+        assert config.RETRY_BACKOFF_SCHEDULE == [1, 2, 3, 5, 10, 10, 10, 10, 10]
+        assert config.MAX_RETRIES == len(config.RETRY_BACKOFF_SCHEDULE) + 1
 
     def test_rate_limit_codes(self):
         """Test rate limit HTTP codes."""

@@ -192,9 +192,8 @@ API keys are managed via environment variables or `.env` files:
 
 ```python
 DEFAULT_MODEL = "gemini-2.5-flash-lite"
-MAX_RETRIES = 5
-RETRY_MIN_WAIT = 1
-RETRY_MAX_WAIT = 60
+RETRY_BACKOFF_SCHEDULE = [1, 2, 3, 5, 10, 10, 10, 10, 10]
+MAX_RETRIES = len(RETRY_BACKOFF_SCHEDULE) + 1
 REQUEST_DELAY = 0.5
 ```
 
