@@ -76,6 +76,23 @@ class TestParseArguments:
 
             assert args.preview_rows == 5
 
+    def test_parse_with_fields_option(self):
+        """Test parsing with fields option."""
+        test_args = [
+            "main.py",
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1",
+            "--fields",
+            "score:float,label:str",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            args = parse_arguments()
+
+            assert args.fields == "score:float,label:str"
+
     def test_parse_with_list_option(self):
         """Test parsing with list flag."""
         test_args = ["main.py", "--list"]
@@ -98,6 +115,8 @@ class TestParseArguments:
             "-m",
             "gpt-4o",
             "-p",
+            "-f",
+            "flag:bool",
             "-l",
         ]
 
@@ -109,6 +128,7 @@ class TestParseArguments:
             assert args.output == "output.csv"
             assert args.model == "gpt-4o"
             assert args.preview is True
+            assert args.fields == "flag:bool"
             assert args.list_models is True
 
 

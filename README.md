@@ -180,7 +180,7 @@ uv run python main.py --input data/papers.csv --columns title,abstract --output 
 uv run python main.py \
   --input data/articles.csv \
   --columns title,abstract \
-  --schema '{"is_relevant": "bool", "summary": "str"}' \
+  --fields 'is_relevant:bool,summary:str' \
   --output classified.csv
 ```
 
@@ -210,26 +210,21 @@ uv run python main.py --list
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
 | `--column-prefix` | | Prefix for new columns (default: `llm_output`) | No |
-| `--schema` | | JSON schema for output structure (e.g., `'{"field": "str"}'`) | No |
-| `--fields` | | Simple field definition (e.g., `"field1:str,field2:int"`) | No |
+| `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`) | No |
 
-## Best Practices for Schema Definition
+## Best Practices for Field Definitions
 
-### Choosing Schema vs Fields
+### Defining Fields
 
-Both `--schema` and `--fields` create Pydantic models for structured output:
+Use `--fields` to describe the JSON structure you expect back:
 
 ```bash
-# Schema format (JSON)
---schema '{"is_relevant": "bool", "summary": "str"}'
-
-# Fields format (comma-separated)
---fields "is_relevant:bool,summary:str"
+--fields "is_relevant:bool,summary:str,keywords:list[str]"
 ```
 
-**Recommendation**: Use `--schema` for clarity and explicit validation, or `--fields` for brevity.
+Any field without `:type` defaults to `str`. Supported types: `bool`, `int`, `float`, `str`, `list[str]`, `list[int]`, `list[float]`, `list[bool]`, and `dict`.
 
-### Schema Design Patterns
+### Field Design Patterns
 
 #### Pattern 1: Binary Classification (Most Reliable) ✅
 
@@ -239,7 +234,7 @@ Use **boolean fields** for yes/no decisions - these are strictly enforced across
 uv run python main.py \
   --input data.csv \
   --columns title,abstract \
-  --schema '{"is_relevant": "bool", "reason": "str"}' \
+  --fields "is_relevant:bool,reason:str" \
   --output results.csv
 ```
 
@@ -250,7 +245,7 @@ uv run python main.py \
 For granular classifications (e.g., high/medium/low), understand the limitations:
 
 ```bash
---schema '{"relevance": "str", "confidence": "str", "notes": "str"}'
+--fields "relevance:str,confidence:str,notes:str"
 ```
 
 **Important**: String fields don't enforce enum constraints. LLMs may return unexpected values.
@@ -265,7 +260,7 @@ For granular classifications (e.g., high/medium/low), understand the limitations
 Combine boolean gates with descriptive fields:
 
 ```bash
---schema '{"is_dish_related": "bool", "confidence_level": "str", "explanation": "str"}'
+--fields "is_dish_related:bool,confidence_level:str,explanation:str"
 ```
 
 Then in your prompt:
@@ -298,7 +293,7 @@ LLM Analyser supports three levels of validation through LiteLLM:
    - Ensures valid JSON structure
    - No field or type validation
 
-2. **Type Validation** (with `--schema` or `--fields`)
+2. **Type Validation** (with `--fields`)
    - Enforces field presence and types
    - Boolean, int, float strictly enforced
    - Strings accept any text
@@ -439,7 +434,7 @@ ValueError: Failed to parse LLM response as JSON
 
 1. **Use boolean fields for binary decisions** (RECOMMENDED):
    ```bash
-   --schema '{"is_relevant": "bool", "reason": "str"}'
+   --fields "is_relevant:bool,reason:str"
    ```
    Boolean fields strictly enforce `true`/`false` values across all providers.
 

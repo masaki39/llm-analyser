@@ -16,10 +16,7 @@ from llman.config import (
 )
 from llman.llm_client import LLMClient
 from llman.processor import CSVProcessor
-from llman.schemas import (
-    create_output_model_from_string,
-    create_output_model_from_json,
-)
+from llman.schemas import create_output_model_from_string
 
 # Configure logging
 logging.basicConfig(
@@ -111,16 +108,17 @@ Environment Variables:
         help="Number of rows to preview when using --preview (default: 3)",
     )
 
-    parser.add_argument(
-        "--schema",
-        type=str,
-        help='Output schema as JSON string (e.g., \'{"field1": "str", "field2": "int"}\')',
+    field_help = (
+        'Output fields definition (e.g., "is_relevant:bool,summary:str,keywords:list[str]"). '
+        "Supported types: bool, int, float, str, list[str], list[int], list[float], "
+        "list[bool], dict. Omitting :type defaults to str."
     )
 
     parser.add_argument(
         "--fields",
+        "-f",
         type=str,
-        help='Output fields (simple: "field1,field2" or typed: "field1:str,field2:int,field3:list[str]")',
+        help=field_help,
     )
 
     parser.add_argument(
@@ -194,11 +192,6 @@ def main() -> None:
         print("Use --help for more information")
         sys.exit(1)
 
-    # Validate schema/fields options
-    if args.schema and args.fields:
-        print("Error: Cannot specify both --schema and --fields")
-        sys.exit(1)
-
     # Parse columns
     columns = [col.strip() for col in args.columns.split(",")]
 
@@ -222,14 +215,7 @@ def main() -> None:
 
     # Create response model from schema/fields if provided
     response_model = None
-    if args.schema:
-        try:
-            response_model = create_output_model_from_json(args.schema)
-            print(f"\n✓ Using schema: {args.schema}")
-        except Exception as e:
-            print(f"Error parsing schema: {e}")
-            sys.exit(1)
-    elif args.fields:
+    if args.fields:
         try:
             response_model = create_output_model_from_string(args.fields)
             print(f"\n✓ Using fields: {args.fields}")

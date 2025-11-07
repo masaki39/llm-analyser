@@ -484,7 +484,7 @@ LLM Analyser supports three levels of output validation through LiteLLM:
    - No field or type validation
    - Works with all providers
 
-2. **Type Validation** (with `--schema` or `--fields`)
+2. **Type Validation** (with `--fields`)
    - Enforces field presence and basic types
    - Boolean, int, float strictly enforced
    - String fields accept any text (no enum constraint)
@@ -506,7 +506,7 @@ Based on real-world testing with multiple providers:
 | `str` | ⚠️ **Flexible** | Any text accepted (no enum) |
 | `list[str]` | ⚠️ **Flexible** | JSON array of strings |
 
-**Key Insight**: String fields with `--schema '{"relation": "str"}'` only enforce that the value is a string. They do NOT enforce enum-like constraints (e.g., "must be high/middle/low").
+**Key Insight**: String fields with `--fields 'relation:str'` only enforce that the value is a string. They do NOT enforce enum-like constraints (e.g., "must be high/middle/low").
 
 ### Recommended Schema Patterns
 
@@ -515,7 +515,7 @@ Based on real-world testing with multiple providers:
 For binary classification tasks, use boolean fields:
 
 ```bash
---schema '{"is_relevant": "bool", "confidence": "str", "reason": "str"}'
+--fields "is_relevant:bool,confidence:str,reason:str"
 ```
 
 **Advantages**:
@@ -535,7 +535,7 @@ Provide confidence level (high/medium/low) and reason.
 For multi-level classification (high/middle/low):
 
 ```bash
---schema '{"relation": "str", "reason": "str"}'
+--fields "relation:str,reason:str"
 ```
 
 **Reality**:
@@ -553,7 +553,7 @@ For multi-level classification (high/middle/low):
 Combine boolean gates with descriptive string fields:
 
 ```bash
---schema '{"is_dish_related": "bool", "relevance_level": "str", "explanation": "str"}'
+--fields "is_dish_related:bool,relevance_level:str,explanation:str"
 ```
 
 **Workflow**:
@@ -597,7 +597,7 @@ When designing your schema:
 - Expected: `"relation": "high"` | `"middle"` | `"low"`
 - Actual: Various unexpected values like "unrelated", "no", "N/A", etc.
 
-**Lesson**: `--schema '{"field": "str"}'` only enforces type (string), not enum values.
+**Lesson**: `--fields 'field:str'` only enforces type (string), not enum values.
 
 #### 2. Boolean Fields Provide Strict Enforcement
 
