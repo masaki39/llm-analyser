@@ -52,6 +52,9 @@ cp .env.example .env
 # OPENAI_API_KEY=your-openai-api-key-here
 # For Anthropic:
 # ANTHROPIC_API_KEY=your-anthropic-api-key-here
+# Override default model (optional):
+# LLMAN_DEFAULT_MODEL=gemini/gemini-2.5-flash-lite
+# For Groq / Mistral / Cohere / etc. see the table below
 ```
 
 Alternatively, export the API key directly:
@@ -65,7 +68,42 @@ export OPENAI_API_KEY='your-openai-api-key-here'
 
 # For Anthropic
 export ANTHROPIC_API_KEY='your-anthropic-api-key-here'
+# Override default model (optional)
+export LLMAN_DEFAULT_MODEL='groq/llama-3.1-8b-instant'
+# For Groq
+export GROQ_API_KEY='your-groq-api-key-here'
+# For Mistral
+export MISTRAL_API_KEY='your-mistral-api-key-here'
+# For Cohere
+export COHERE_API_KEY='your-cohere-api-key-here'
 ```
+
+### Common Provider Environment Variables
+
+| Provider | Example Model Prefix | Environment Variables |
+|----------|---------------------|------------------------|
+| Default model override | *(applies globally)* | `LLMAN_DEFAULT_MODEL` |
+| Google Gemini | `gemini/` | `GEMINI_API_KEY` |
+| OpenAI | `gpt-` or `openai/` | `OPENAI_API_KEY` |
+| Anthropic / Claude | `claude-` or `anthropic/` | `ANTHROPIC_API_KEY` |
+| Groq | `groq/` | `GROQ_API_KEY` |
+| Mistral AI | `mistral/` | `MISTRAL_API_KEY` |
+| Cohere | `cohere/` | `COHERE_API_KEY` |
+| Together AI | `together_ai/` | `TOGETHERAI_API_KEY` or `TOGETHER_AI_TOKEN` |
+| Replicate | `replicate/` | `REPLICATE_API_KEY` |
+| Hugging Face Inference | `huggingface/` | `HUGGINGFACE_API_KEY` |
+| xAI (Grok) | `xai/` | `XAI_API_KEY` |
+| OpenRouter | `openrouter/` | `OPENROUTER_API_KEY` |
+| GroqCloud | `groq/` | `GROQ_API_KEY` |
+| DeepSeek | `deepseek/` | `DEEPSEEK_API_KEY` |
+| Perplexity | `perplexity/` | `PERPLEXITY_API_KEY` |
+| Google Vertex AI | `vertex_ai/` | `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON) |
+| Azure OpenAI | `azure/` | `AZURE_OPENAI_API_KEY` (plus endpoint/deployment vars) |
+| Amazon Bedrock / SageMaker | `bedrock/`, `sagemaker/` | Standard AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) |
+| IBM watsonx | `watsonx/` | `WATSONX_API_KEY` or `WATSONX_APIKEY` |
+| Databricks | `databricks/` | `DATABRICKS_TOKEN` |
+
+Set any combination of keys in `.env` to toggle providers instantly. Run `uv run python main.py --list` (or `-l`) to see the bundled examples, or supply any LiteLLM-supported model string manually.
 
 ## Usage
 
@@ -157,7 +195,7 @@ Provide a one-sentence summary.
 #### Example 5: List Available Models
 
 ```bash
-uv run python main.py --list-models
+uv run python main.py --list
 ```
 
 ### Command-Line Options
@@ -167,8 +205,8 @@ uv run python main.py --list-models
 | `--input` | `-i` | Path to input CSV file | Yes |
 | `--columns` | `-c` | Comma-separated list of columns to use as LLM input | Yes |
 | `--output` | `-o` | Path to output CSV file | Yes (unless `--preview`) |
-| `--model` | `-m` | LLM model name (default: `gemini/gemini-2.5-flash-lite`) | No |
-| `--list-models` | | List supported models and exit | No |
+| `--model` | `-m` | LLM model name (default: `LLMAN_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
+| `--list` | `-l` | List supported models and exit | No |
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
 | `--column-prefix` | | Prefix for new columns (default: `llm_output`) | No |
@@ -312,13 +350,13 @@ LLM Analyser supports 100+ models via LiteLLM. Common examples:
 - `claude-3-5-sonnet-20241022` - High quality
 - `claude-3-haiku-20240307` - Fast
 
-For the full list, run `uv run python main.py --list-models` or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
+For the full list, run `uv run python main.py --list` (or `-l`) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
 
 ## Configuration
 
 Key configuration options can be found in `llman/config.py`:
 
-- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite)
+- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAN_DEFAULT_MODEL` in `.env`.
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
 - `MAX_RETRIES`: Maximum number of retry attempts (5)
 - `RETRY_MIN_WAIT`: Minimum wait time between retries (1 second)
@@ -479,6 +517,6 @@ This project is provided as-is for educational and research purposes.
 ## Acknowledgments
 
 - Built with [LiteLLM](https://docs.litellm.ai/) for multi-provider LLM support
-- Supports [Google Gemini](https://ai.google.dev/), [OpenAI](https://openai.com/), [Anthropic](https://www.anthropic.com/), and 100+ LLM providers
+- Supports [Google Gemini](https://ai.google.dev/), [OpenAI](https://openai.com/), [Anthropic](https://www.anthropic.com/), [Groq](https://console.groq.com/), [Mistral](https://mistral.ai/), [Cohere](https://cohere.com/), and 100+ other providers exposed via LiteLLM
 - Uses [uv](https://github.com/astral-sh/uv) for fast, reliable dependency management
 - Powered by [pandas](https://pandas.pydata.org/) for CSV processing

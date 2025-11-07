@@ -728,7 +728,7 @@ Based on lessons learned:
 - **Multi-Provider Support**: Supports Gemini, OpenAI, Anthropic, and 100+ providers
 - **Enforced JSON Mode**: Uses `response_format={"type": "json_object"}`
 - **Provider Auto-Detection**: Automatically detects provider from model name
-- **Model Listing**: Added `--list-models` command
+- **Model Listing**: Added `--list` (`-l`) command
 
 ### v0.1.0
 - Initial release with Gemini-only support

@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 from llman.config import (
     API_KEY_ENV_VARS,
     DATA_DIR,
-    DEFAULT_MODEL,
     SUPPORTED_MODELS,
+    get_default_model,
 )
 from llman.llm_client import LLMClient
 from llman.processor import CSVProcessor
@@ -79,17 +79,21 @@ Environment Variables:
         help="Path to output CSV file (optional, defaults to input file)",
     )
 
+    default_model = get_default_model()
+
     parser.add_argument(
         "--model",
         "-m",
         type=str,
-        default=DEFAULT_MODEL,
-        help=f"LLM model name (default: {DEFAULT_MODEL}). Supports Gemini, OpenAI, Anthropic models via LiteLLM.",
+        default=default_model,
+        help=f"LLM model name (default: {default_model}). Supports Gemini, OpenAI, Anthropic models via LiteLLM.",
     )
 
     parser.add_argument(
-        "--list-models",
+        "--list",
+        "-l",
         action="store_true",
+        dest="list_models",
         help="List supported models and exit",
     )
 
@@ -179,12 +183,12 @@ def main() -> None:
     # Parse arguments
     args = parse_arguments()
 
-    # Handle --list-models
+    # Handle --list
     if args.list_models:
         list_supported_models()
         sys.exit(0)
 
-    # Validate required arguments (only if not using --list-models)
+    # Validate required arguments (only if not using --list)
     if not args.input or not args.columns:
         print("Error: the following arguments are required: --input/-i, --columns/-c")
         print("Use --help for more information")

@@ -1,24 +1,48 @@
 """Tests for configuration module."""
 
-from llman import config
+import importlib
+
+import llman.config as config
+
+
+def reload_config():
+    """Reload config module so env overrides take effect."""
+    global config  # noqa: PLW0603 - needed to update module reference for tests
+    config = importlib.reload(config)
+    return config
 
 
 class TestConfig:
     """Test configuration values."""
 
-    def test_default_model(self):
+    def test_default_model(self, monkeypatch):
         """Test default model is set correctly."""
-        assert config.DEFAULT_MODEL == "gemini/gemini-2.5-flash-lite"
+        monkeypatch.delenv("LLMAN_DEFAULT_MODEL", raising=False)
+        cfg = reload_config()
+        assert cfg.DEFAULT_MODEL == cfg.DEFAULT_MODEL_FALLBACK
+
+    def test_default_model_env_override(self, monkeypatch):
+        """Test default model can be overridden via environment variable."""
+        custom_default = "groq/llama-3.1-8b-instant"
+        monkeypatch.setenv("LLMAN_DEFAULT_MODEL", custom_default)
+        cfg = reload_config()
+        assert cfg.DEFAULT_MODEL == custom_default
+        monkeypatch.delenv("LLMAN_DEFAULT_MODEL", raising=False)
+        reload_config()
 
     def test_api_key_env_vars(self):
         """Test API key environment variable mappings."""
         assert "gemini" in config.API_KEY_ENV_VARS
         assert "openai" in config.API_KEY_ENV_VARS
         assert "anthropic" in config.API_KEY_ENV_VARS
+        assert "groq" in config.API_KEY_ENV_VARS
+        assert "mistral" in config.API_KEY_ENV_VARS
 
-        assert config.API_KEY_ENV_VARS["gemini"] == "GEMINI_API_KEY"
-        assert config.API_KEY_ENV_VARS["openai"] == "OPENAI_API_KEY"
-        assert config.API_KEY_ENV_VARS["anthropic"] == "ANTHROPIC_API_KEY"
+        assert config.API_KEY_ENV_VARS["gemini"] == ["GEMINI_API_KEY"]
+        assert config.API_KEY_ENV_VARS["openai"] == ["OPENAI_API_KEY"]
+        assert config.API_KEY_ENV_VARS["anthropic"] == ["ANTHROPIC_API_KEY"]
+        assert "GROQ_API_KEY" in config.API_KEY_ENV_VARS["groq"]
+        assert "MISTRAL_API_KEY" in config.API_KEY_ENV_VARS["mistral"]
 
     def test_supported_models(self):
         """Test supported models dictionary."""
@@ -27,9 +51,11 @@ class TestConfig:
 
         # Check some key models exist
         assert "gemini/gemini-2.5-flash-lite" in config.SUPPORTED_MODELS
-        assert "gemini/gemini-2.0-flash-lite" in config.SUPPORTED_MODELS
         assert "gpt-4o" in config.SUPPORTED_MODELS
         assert "claude-3-5-sonnet-20241022" in config.SUPPORTED_MODELS
+        assert "groq/llama-3.1-8b-instant" in config.SUPPORTED_MODELS
+        assert "mistral/mistral-large-latest" in config.SUPPORTED_MODELS
+        assert "cohere/command-r-plus" in config.SUPPORTED_MODELS
 
     def test_retry_config(self):
         """Test retry configuration values."""

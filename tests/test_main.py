@@ -76,9 +76,9 @@ class TestParseArguments:
 
             assert args.preview_rows == 5
 
-    def test_parse_with_list_models_option(self):
-        """Test parsing with list-models option."""
-        test_args = ["main.py", "--list-models"]
+    def test_parse_with_list_option(self):
+        """Test parsing with list flag."""
+        test_args = ["main.py", "--list"]
 
         with patch.object(sys, "argv", test_args):
             args = parse_arguments()
@@ -98,6 +98,7 @@ class TestParseArguments:
             "-m",
             "gpt-4o",
             "-p",
+            "-l",
         ]
 
         with patch.object(sys, "argv", test_args):
@@ -108,6 +109,7 @@ class TestParseArguments:
             assert args.output == "output.csv"
             assert args.model == "gpt-4o"
             assert args.preview is True
+            assert args.list_models is True
 
 
 class TestListSupportedModels:
@@ -131,9 +133,9 @@ class TestListSupportedModels:
 class TestMainExecution:
     """Test main function execution flow."""
 
-    def test_main_exits_with_list_models(self, capsys):
-        """Test that --list-models exits after printing."""
-        test_args = ["main.py", "--list-models"]
+    def test_main_exits_with_list_flag(self, capsys):
+        """Test that --list exits after printing."""
+        test_args = ["main.py", "--list"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -146,7 +148,7 @@ class TestMainExecution:
             assert "SUPPORTED MODELS" in captured.out
 
     def test_main_requires_input_and_columns(self, capsys):
-        """Test that main requires --input and --columns without --list-models."""
+        """Test that main requires --input and --columns without --list."""
         test_args = ["main.py"]
 
         with patch.object(sys, "argv", test_args):

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from litellm.exceptions import RateLimitError
 
+from llman import config
 from llman.llm_client import LLMClient
 
 
@@ -32,10 +33,9 @@ class TestLLMClientInitialization:
 
     def test_init_without_api_key_raises_error(self, monkeypatch):
         """Test initialization without API key raises ValueError."""
-        # Clear all API keys
-        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        # Clear Gemini API env vars
+        for env_var in config.API_KEY_ENV_VARS.get("gemini", []):
+            monkeypatch.delenv(env_var, raising=False)
 
         with pytest.raises(ValueError, match="API key.*not found"):
             LLMClient(model_name="gemini/gemini-2.5-flash-lite")
@@ -46,6 +46,15 @@ class TestLLMClientInitialization:
             model_name="gemini/gemini-2.5-flash-lite", api_key="explicit-test-key"
         )
         assert client.model_name == "gemini/gemini-2.5-flash-lite"
+
+    def test_init_uses_env_default_model(self, mock_env_vars, monkeypatch):
+        """LLMClient should pick up env override when model_name omitted."""
+        custom_default = "groq/llama-3.1-8b-instant"
+        monkeypatch.setenv("LLMAN_DEFAULT_MODEL", custom_default)
+        client = LLMClient()
+        assert client.model_name == custom_default
+        assert client.provider == "groq"
+        monkeypatch.delenv("LLMAN_DEFAULT_MODEL", raising=False)
 
 
 class TestProviderDetection:
@@ -70,6 +79,11 @@ class TestProviderDetection:
         """Test Anthropic provider detection with claude- prefix."""
         client = LLMClient(model_name="claude-3-haiku-20240307")
         assert client.provider == "anthropic"
+
+    def test_detect_groq_provider(self, mock_env_vars):
+        """Test Groq provider detection with explicit prefix."""
+        client = LLMClient(model_name="groq/llama-3.1-8b-instant")
+        assert client.provider == "groq"
 
     def test_detect_unknown_provider(self, mock_env_vars):
         """Test unknown provider detection."""

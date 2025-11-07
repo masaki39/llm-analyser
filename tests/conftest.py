@@ -5,6 +5,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from llman.config import API_KEY_ENV_VARS
+
 
 @pytest.fixture
 def sample_csv_data():
@@ -59,9 +61,14 @@ def sample_llm_response_with_markdown():
 @pytest.fixture
 def mock_env_vars(monkeypatch):
     """Mock environment variables for testing."""
-    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    for env_values in API_KEY_ENV_VARS.values():
+        if isinstance(env_values, str):
+            env_list = [env_values]
+        else:
+            env_list = env_values
+        for env_var in env_list:
+            if env_var:
+                monkeypatch.setenv(env_var, f"test-{env_var.lower()}")
 
 
 @pytest.fixture

@@ -24,13 +24,13 @@ from tenacity import (
 
 from .config import (
     API_KEY_ENV_VARS,
-    DEFAULT_MODEL,
     MAX_RETRIES,
     REQUEST_DELAY,
     RETRY_MAX_WAIT,
     RETRY_MIN_WAIT,
     RETRY_MULTIPLIER,
     USE_JSON_MODE,
+    get_default_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,21 +39,22 @@ logger = logging.getLogger(__name__)
 class LLMClient:
     """Client for interacting with multiple LLM providers via LiteLLM with retry logic."""
 
-    def __init__(self, model_name: str = DEFAULT_MODEL, api_key: str | None = None):
+    def __init__(self, model_name: str | None = None, api_key: str | None = None):
         """Initialize the LLM client.
 
         Args:
             model_name: Name of the model to use (e.g., "gemini/gemini-2.5-flash-lite", "gpt-4o").
+                Defaults to the value of LLMAN_DEFAULT_MODEL env var (or Gemini Flash Lite).
             api_key: Optional API key. If None, LiteLLM will use standard environment variables.
 
         Raises:
             ValueError: If required API key is not found in environment.
         """
-        self.model_name = model_name
+        self.model_name = model_name or get_default_model()
         self.last_request_time = 0
 
         # Determine provider from model name
-        self.provider = self._detect_provider(model_name)
+        self.provider = self._detect_provider(self.model_name)
 
         # Set up API key if provided
         if api_key:
@@ -68,7 +69,7 @@ class LLMClient:
         litellm.enable_json_schema_validation = True  # Enable client-side validation
 
         # Check if model supports response schema
-        self.supports_schema = supports_response_schema(model_name)
+        self.supports_schema = supports_response_schema(self.model_name)
 
     def _detect_provider(self, model_name: str) -> str:
         """Detect the provider from the model name.
@@ -79,6 +80,22 @@ class LLMClient:
         Returns:
             The provider name (e.g., "gemini", "openai", "anthropic").
         """
+        # Try LiteLLM's provider detection first
+        try:
+            _, provider, _, custom_provider = litellm.get_llm_provider(model_name)
+            if provider:
+                return provider
+            if custom_provider:
+                return custom_provider
+        except Exception:
+            pass
+
+        # Check explicit provider prefix (provider/model-name)
+        if "/" in model_name:
+            prefix = model_name.split("/", 1)[0]
+            if prefix in API_KEY_ENV_VARS:
+                return prefix
+
         if model_name.startswith("gemini/"):
             return "gemini"
         elif model_name.startswith("gpt-") or model_name.startswith("openai/"):
@@ -98,9 +115,14 @@ class LLMClient:
         Args:
             api_key: The API key to set.
         """
-        env_var = API_KEY_ENV_VARS.get(self.provider)
-        if env_var:
-            os.environ[env_var] = api_key
+        env_vars = API_KEY_ENV_VARS.get(self.provider)
+        if not env_vars:
+            return
+        if isinstance(env_vars, str):
+            env_vars = [env_vars]
+        target_var = env_vars[0] if env_vars else None
+        if target_var:
+            os.environ[target_var] = api_key
 
     def _verify_api_key(self) -> None:
         """Verify that the required API key is set in environment.
@@ -108,8 +130,8 @@ class LLMClient:
         Raises:
             ValueError: If the required API key is not found.
         """
-        env_var = API_KEY_ENV_VARS.get(self.provider)
-        if not env_var:
+        env_vars = API_KEY_ENV_VARS.get(self.provider)
+        if not env_vars:
             # Unknown provider, log warning
             logger.warning(
                 f"Unknown provider '{self.provider}' for model '{self.model_name}'. "
@@ -117,11 +139,15 @@ class LLMClient:
             )
             return
 
-        if not os.getenv(env_var):
+        if isinstance(env_vars, str):
+            env_vars = [env_vars]
+
+        if not any(os.getenv(var) for var in env_vars):
+            env_hint = ", ".join(env_vars)
             raise ValueError(
                 f"API key for {self.provider} not found. "
-                f"Please set the {env_var} environment variable.\n"
-                f"Example: export {env_var}='your-api-key-here'"
+                f"Please set one of the following environment variables: {env_hint}\n"
+                f"Example: export {env_vars[0]}='your-api-key-here'"
             )
 
     def _rate_limit_delay(self) -> None:
