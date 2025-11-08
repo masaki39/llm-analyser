@@ -205,19 +205,21 @@ uv run python main.py --list
 |--------|-------|-------------|----------|
 | `--input` | `-i` | Path to input CSV file | Yes |
 | `--columns` | `-c` | Comma-separated list of columns to use as LLM input | Yes |
-| `--output` | `-o` | Path to output CSV file | Yes (unless `--preview`) |
+| `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`). Required to keep output columns consistent. | Yes |
+| `--output` | `-o` | Path to output CSV file (defaults to overwriting the input file when omitted) | No |
 | `--model` | `-m` | LLM model name (default: `LLMAN_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
 | `--list` | `-l` | List supported models and exit | No |
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
-| `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`) | No |
 | `--no-resume` | `-R` | Reprocess all rows even if output exists | No |
+
+> **Note:** When `--output` is omitted, the processor overwrites the input CSV in place. Use `--preview` first or point `--output` to a different file if you want to keep the original rows untouched.
 
 ## Best Practices for Field Definitions
 
 ### Defining Fields
 
-Use `--fields` to describe the JSON structure you expect back:
+Use `--fields` (required) to describe the JSON structure you expect back. The CLI enforces this flag to keep output columns consistent:
 
 ```bash
 --fields "is_relevant:bool,summary:str,keywords:list[str]"

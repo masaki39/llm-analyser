@@ -28,6 +28,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+class CompactHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Help formatter without metavar duplication in option listing."""
+
+    def _format_action_invocation(self, action):
+        if not action.option_strings:
+            return super()._format_action_invocation(action)
+        # Display short flags first for consistent column width
+        option_strings = sorted(action.option_strings, key=len)
+        return ", ".join(option_strings)
+
+
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments.
 
@@ -35,8 +46,9 @@ def parse_arguments() -> argparse.Namespace:
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
+        usage="main.py [options]",
         description="Process CSV files with LLM to generate structured data columns",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=CompactHelpFormatter,
         epilog="""
 Examples:
   # Process a CSV file with interactive prompt
@@ -48,10 +60,8 @@ Examples:
   # Use a custom model
   uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.5-flash-lite
 
-Environment Variables:
-  GEMINI_API_KEY      Gemini API key (for Gemini models)
-  OPENAI_API_KEY      OpenAI API key (for GPT models)
-  ANTHROPIC_API_KEY   Anthropic API key (for Claude models)
+API Keys:
+  Set the appropriate provider API key via environment variables or .env (see README).
         """,
     )
 
@@ -69,29 +79,24 @@ Environment Variables:
         help="Comma-separated list of columns to use as LLM input (e.g., 'title,abstract,keywords')",
     )
 
+    field_help = (
+        'Output fields definition (e.g., "is_relevant:bool,summary:str,keywords:list[str]"). '
+        "Supported types: bool, int, float, str, list[str], list[int], list[float], "
+        "list[bool], dict. Omitting :type defaults to str. Required to keep output columns consistent."
+    )
+
+    parser.add_argument(
+        "--fields",
+        "-f",
+        type=str,
+        help=field_help,
+    )
+
     parser.add_argument(
         "--output",
         "-o",
         type=str,
         help="Path to output CSV file (optional, defaults to input file)",
-    )
-
-    default_model = get_default_model()
-
-    parser.add_argument(
-        "--model",
-        "-m",
-        type=str,
-        default=default_model,
-        help=f"LLM model name (default: {default_model}). Supports Gemini, OpenAI, Anthropic models via LiteLLM.",
-    )
-
-    parser.add_argument(
-        "--list",
-        "-l",
-        action="store_true",
-        dest="list_models",
-        help="List supported models and exit",
     )
 
     parser.add_argument(
@@ -108,17 +113,14 @@ Environment Variables:
         help="Number of rows to preview when using --preview (default: 3)",
     )
 
-    field_help = (
-        'Output fields definition (e.g., "is_relevant:bool,summary:str,keywords:list[str]"). '
-        "Supported types: bool, int, float, str, list[str], list[int], list[float], "
-        "list[bool], dict. Omitting :type defaults to str."
-    )
+    default_model = get_default_model()
 
     parser.add_argument(
-        "--fields",
-        "-f",
+        "--model",
+        "-m",
         type=str,
-        help=field_help,
+        default=default_model,
+        help=f"LLM model name (default: {default_model}). Supports Gemini, OpenAI, Anthropic models via LiteLLM.",
     )
 
     parser.add_argument(
@@ -126,6 +128,14 @@ Environment Variables:
         "-R",
         action="store_true",
         help="Disable resume mode (always process all rows, even if output exists)",
+    )
+
+    parser.add_argument(
+        "--list",
+        "-l",
+        action="store_true",
+        dest="list_models",
+        help="List supported models and exit",
     )
 
     return parser.parse_args()
@@ -188,8 +198,16 @@ def main() -> None:
         sys.exit(0)
 
     # Validate required arguments (only if not using --list)
-    if not args.input or not args.columns:
-        print("Error: the following arguments are required: --input/-i, --columns/-c")
+    missing_args = []
+    if not args.input:
+        missing_args.append("--input/-i")
+    if not args.columns:
+        missing_args.append("--columns/-c")
+    if not args.fields:
+        missing_args.append("--fields/-f")
+
+    if missing_args:
+        print("Error: the following arguments are required: " + ", ".join(missing_args))
         print("Use --help for more information")
         sys.exit(1)
 

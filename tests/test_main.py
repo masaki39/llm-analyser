@@ -21,6 +21,8 @@ class TestParseArguments:
             "col1,col2",
             "--output",
             "output.csv",
+            "--fields",
+            "score:float,label:str",
         ]
 
         with patch.object(sys, "argv", test_args):
@@ -29,6 +31,7 @@ class TestParseArguments:
             assert args.input == "test.csv"
             assert args.columns == "col1,col2"
             assert args.output == "output.csv"
+            assert args.fields == "score:float,label:str"
 
     def test_parse_with_model_option(self):
         """Test parsing with model option."""
@@ -42,6 +45,8 @@ class TestParseArguments:
             "output.csv",
             "--model",
             "gpt-4o",
+            "--fields",
+            "confidence:float",
         ]
 
         with patch.object(sys, "argv", test_args):
@@ -51,7 +56,16 @@ class TestParseArguments:
 
     def test_parse_with_preview_option(self):
         """Test parsing with preview option."""
-        test_args = ["main.py", "--input", "test.csv", "--columns", "col1", "--preview"]
+        test_args = [
+            "main.py",
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1",
+            "--preview",
+            "--fields",
+            "flag:bool",
+        ]
 
         with patch.object(sys, "argv", test_args):
             args = parse_arguments()
@@ -69,6 +83,8 @@ class TestParseArguments:
             "--preview",
             "--preview-rows",
             "5",
+            "--fields",
+            "flag:bool",
         ]
 
         with patch.object(sys, "argv", test_args):
@@ -133,6 +149,23 @@ class TestParseArguments:
             assert args.no_resume is True
             assert args.list_models is True
 
+    def test_help_uses_compact_flags(self, capsys):
+        """Help text should not duplicate metavar values in option listing."""
+        test_args = ["main.py", "--help"]
+
+        with patch.object(sys, "argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
+                parse_arguments()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "usage: main.py [options]" in captured.out
+        options_text = captured.out.split("options:", 1)[1]
+        assert "-i, --input" in options_text
+        assert "--input INPUT, -i INPUT" not in options_text
+        # Short flags should appear before long flags
+        assert options_text.index("-h, --help") < options_text.index("-i, --input")
+
 
 class TestListSupportedModels:
     """Test list supported models function."""
@@ -181,7 +214,7 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --input/-i, --columns/-c" in captured.out
+            assert "required: --input/-i, --columns/-c, --fields/-f" in captured.out
 
     def test_main_requires_columns_when_only_input(self, capsys):
         """Test that main requires --columns when only --input is provided."""
@@ -195,7 +228,7 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --input/-i, --columns/-c" in captured.out
+            assert "required: --columns/-c, --fields/-f" in captured.out
 
     def test_main_requires_input_when_only_columns(self, capsys):
         """Test that main requires --input when only --columns is provided."""
@@ -209,11 +242,20 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --input/-i, --columns/-c" in captured.out
+            assert "required: --input/-i, --fields/-f" in captured.out
 
     def test_main_accepts_preview_without_output(self):
         """Test that main accepts --preview without --output."""
-        test_args = ["main.py", "--input", "test.csv", "--columns", "col1", "--preview"]
+        test_args = [
+            "main.py",
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1",
+            "--preview",
+            "--fields",
+            "flag:bool",
+        ]
 
         with patch.object(sys, "argv", test_args):
             with patch("main.get_user_prompt", return_value="Test prompt"):
@@ -227,3 +269,23 @@ class TestMainExecution:
                             main()
                         except (FileNotFoundError, SystemExit):
                             pass  # Expected due to missing test.csv
+
+    def test_main_requires_fields_when_missing(self, capsys):
+        """Test that main requires --fields when --input/--columns are provided."""
+        test_args = [
+            "main.py",
+            "--input",
+            "test.csv",
+            "--columns",
+            "col1",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
+                from main import main
+
+                main()
+
+            assert exc_info.value.code == 1
+            captured = capsys.readouterr()
+            assert "required: --fields/-f" in captured.out
