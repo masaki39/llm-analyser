@@ -1,11 +1,11 @@
-# Example local configuration for llmap (development use)
+# Example local configuration for pplyz (development use)
 
 [env]
 # Override default model (optional)
-LLMAP_DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
+PPLYZ_DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
 
 # Gemini API Key
-GEMINI_API_KEY = "your-gemini-api-key-here"
+GEMINI_API_KEY = "AIzaSyAEdTwBAVfw0nZbXiXFdoBS5j24UF3Ktck"
 
 # OpenAI API Key
 OPENAI_API_KEY = "your-openai-api-key-here"
@@ -62,6 +62,6 @@ WATSONX_API_KEY = "your-watsonx-api-key-here"
 # Databricks
 DATABRICKS_TOKEN = "your-databricks-token-here"
 
-[llmap]
-# You can also set llmap-specific defaults here
+[pplyz]
+# You can also set pplyz-specific defaults here
 default_model = "gemini/gemini-2.5-flash-lite"

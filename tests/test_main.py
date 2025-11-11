@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from llmap.cli import list_supported_models, main, parse_arguments
+from pplyz.cli import list_supported_models, main, parse_arguments
 
 
 class TestParseArguments:
@@ -14,7 +14,7 @@ class TestParseArguments:
     def test_parse_required_arguments(self):
         """Test parsing required arguments."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",
@@ -36,7 +36,7 @@ class TestParseArguments:
     def test_parse_with_model_option(self):
         """Test parsing with model option."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",
@@ -57,7 +57,7 @@ class TestParseArguments:
     def test_parse_with_preview_option(self):
         """Test parsing with preview option."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",
@@ -75,7 +75,7 @@ class TestParseArguments:
     def test_parse_with_preview_rows_option(self):
         """Test parsing with preview rows option."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",
@@ -95,7 +95,7 @@ class TestParseArguments:
     def test_parse_with_fields_option(self):
         """Test parsing with fields option."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",
@@ -111,7 +111,7 @@ class TestParseArguments:
 
     def test_parse_with_list_option(self):
         """Test parsing with list flag."""
-        test_args = ["llmap", "--list"]
+        test_args = ["pplyz", "--list"]
 
         with patch.object(sys, "argv", test_args):
             args = parse_arguments()
@@ -121,7 +121,7 @@ class TestParseArguments:
     def test_parse_short_options(self):
         """Test parsing with short option names."""
         test_args = [
-            "llmap",
+            "pplyz",
             "-i",
             "test.csv",
             "-c",
@@ -151,7 +151,7 @@ class TestParseArguments:
 
     def test_help_uses_compact_flags(self, capsys):
         """Help text should not duplicate metavar values in option listing."""
-        test_args = ["llmap", "--help"]
+        test_args = ["pplyz", "--help"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -159,7 +159,7 @@ class TestParseArguments:
 
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "usage: llmap [options]" in captured.out
+        assert "usage: pplyz [options]" in captured.out
         options_text = captured.out.split("options:", 1)[1]
         assert "-i, --input" in options_text
         assert "--input INPUT, -i INPUT" not in options_text
@@ -190,7 +190,7 @@ class TestMainExecution:
 
     def test_main_exits_with_list_flag(self, capsys):
         """Test that --list exits after printing."""
-        test_args = ["llmap", "--list"]
+        test_args = ["pplyz", "--list"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -202,7 +202,7 @@ class TestMainExecution:
 
     def test_main_requires_input_and_columns(self, capsys):
         """Test that main requires --input and --columns without --list."""
-        test_args = ["llmap"]
+        test_args = ["pplyz"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -214,7 +214,7 @@ class TestMainExecution:
 
     def test_main_requires_columns_when_only_input(self, capsys):
         """Test that main requires --columns when only --input is provided."""
-        test_args = ["llmap", "--input", "test.csv"]
+        test_args = ["pplyz", "--input", "test.csv"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -226,7 +226,7 @@ class TestMainExecution:
 
     def test_main_requires_input_when_only_columns(self, capsys):
         """Test that main requires --input when only --columns is provided."""
-        test_args = ["llmap", "--columns", "col1,col2"]
+        test_args = ["pplyz", "--columns", "col1,col2"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -239,7 +239,7 @@ class TestMainExecution:
     def test_main_accepts_preview_without_output(self):
         """Test that main accepts --preview without --output."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",
@@ -250,9 +250,9 @@ class TestMainExecution:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("llmap.cli.get_user_prompt", return_value="Test prompt"):
-                with patch("llmap.cli.LLMClient"):
-                    with patch("llmap.cli.CSVProcessor"):
+            with patch("pplyz.cli.get_user_prompt", return_value="Test prompt"):
+                with patch("pplyz.cli.LLMClient"):
+                    with patch("pplyz.cli.CSVProcessor"):
                         # Should not raise SystemExit for missing --output
                         # (will fail later due to missing file, but argument parsing should pass)
                         try:
@@ -263,7 +263,7 @@ class TestMainExecution:
     def test_main_requires_fields_when_missing(self, capsys):
         """Test that main requires --fields when --input/--columns are provided."""
         test_args = [
-            "llmap",
+            "pplyz",
             "--input",
             "test.csv",
             "--columns",

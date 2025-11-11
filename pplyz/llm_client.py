@@ -36,7 +36,7 @@ class LLMClient:
 
         Args:
             model_name: Name of the model to use (e.g., "gemini/gemini-2.5-flash-lite", "gpt-4o").
-                Defaults to the value of LLMAP_DEFAULT_MODEL env var (or Gemini Flash Lite).
+                Defaults to the value of PPLYZ_DEFAULT_MODEL env var (or Gemini Flash Lite).
             api_key: Optional API key. If None, LiteLLM will use standard environment variables.
 
         Raises:

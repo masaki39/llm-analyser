@@ -5,16 +5,16 @@ import logging
 import sys
 from pathlib import Path
 
-from llmap.config import (
+from pplyz.config import (
     API_KEY_ENV_VARS,
     DATA_DIR,
     SUPPORTED_MODELS,
     get_default_model,
 )
-from llmap.llm_client import LLMClient
-from llmap.processor import CSVProcessor
-from llmap.schemas import create_output_model_from_string
-from llmap.settings import load_runtime_configuration
+from pplyz.llm_client import LLMClient
+from pplyz.processor import CSVProcessor
+from pplyz.schemas import create_output_model_from_string
+from pplyz.settings import load_runtime_configuration
 
 try:
     from prompt_toolkit import PromptSession
@@ -54,19 +54,19 @@ def parse_arguments() -> argparse.Namespace:
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
-        usage="llmap [options]",
+        usage="pplyz [options]",
         description="Process CSV files with LLM to generate structured data columns",
         formatter_class=CompactHelpFormatter,
         epilog="""
 Examples:
   # Process a CSV file with interactive prompt
-  llmap --input data/papers.csv --columns title,abstract --output results.csv
+  pplyz --input data/papers.csv --columns title,abstract --output results.csv
 
   # Preview results on sample rows before full processing
-  llmap --input data/papers.csv --columns title,abstract --preview
+  pplyz --input data/papers.csv --columns title,abstract --preview
 
   # Use a custom model
-  llmap --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.5-flash-lite
+  pplyz --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.5-flash-lite
 
 API Keys:
   Set the appropriate provider API key via environment variables or config TOML (see README).
@@ -190,7 +190,7 @@ def _build_prompt_session():
     history = InMemoryHistory()
 
     try:
-        history_path = Path.home() / ".llmap_prompt_history"
+        history_path = Path.home() / ".pplyz_prompt_history"
         history_path.parent.mkdir(parents=True, exist_ok=True)
         history = FileHistory(str(history_path))
     except OSError:
@@ -287,7 +287,7 @@ def main() -> None:
                 f"  export {env_var}='your-api-key-here'  # For {provider} models"
             )
         logger.error(
-            "\nOr configure llmap.local.toml or ~/.config/llmap/config.toml with the appropriate API key."
+            "\nOr configure pplyz.local.toml or ~/.config/pplyz/config.toml with the appropriate API key."
         )
         sys.exit(1)
 

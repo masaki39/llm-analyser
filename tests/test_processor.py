@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from llmap.processor import CSVProcessor
-from llmap.schemas import create_output_model_from_string
+from pplyz.processor import CSVProcessor
+from pplyz.schemas import create_output_model_from_string
 
 
 class TestCSVProcessorInit:
@@ -14,7 +14,7 @@ class TestCSVProcessorInit:
 
     def test_init_with_llm_client(self, mock_env_vars):
         """Test processor initialization with LLM client."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -29,7 +29,7 @@ class TestProcessCSV:
         self, sample_csv_file, tmp_path, mock_env_vars
     ):
         """Test processing CSV with valid input."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -57,7 +57,7 @@ class TestProcessCSV:
 
     def test_process_csv_with_missing_file(self, tmp_path, mock_env_vars):
         """Test processing non-existent CSV file raises error."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -74,7 +74,7 @@ class TestProcessCSV:
         self, sample_csv_file, tmp_path, mock_env_vars
     ):
         """Test processing CSV with invalid column names raises error."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -91,7 +91,7 @@ class TestProcessCSV:
         self, sample_csv_file, tmp_path, mock_env_vars
     ):
         """Test that processor continues when individual rows fail."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -124,7 +124,7 @@ class TestProcessCSV:
         self, sample_csv_file, tmp_path, mock_env_vars
     ):
         """Ensure resume updates existing columns instead of duplicating them."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -160,7 +160,7 @@ class TestProcessCSV:
         self, sample_csv_file, tmp_path, mock_env_vars
     ):
         """Ensure failed rows are retried before finalizing output."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -197,7 +197,7 @@ class TestPreviewSample:
         self, sample_csv_file, mock_env_vars, capsys
     ):
         """Test preview mode with valid input."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -217,7 +217,7 @@ class TestPreviewSample:
 
     def test_preview_sample_with_missing_columns(self, sample_csv_file, mock_env_vars):
         """Test preview with invalid columns raises error."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)
@@ -231,7 +231,7 @@ class TestPreviewSample:
 
     def test_preview_sample_default_num_rows(self, sample_csv_file, mock_env_vars):
         """Test preview uses default 3 rows."""
-        from llmap.llm_client import LLMClient
+        from pplyz.llm_client import LLMClient
 
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
         processor = CSVProcessor(llm_client=client)

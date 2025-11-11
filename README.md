@@ -1,165 +1,64 @@
-# LLM Analyser (llmap)
+## pplyz
 
-**llmap** is a Python tool for processing CSV data using Large Language Models (LLMs) to generate structured output. The name "llmap" is short for "LLM Analyser". The tool processes CSV files row-by-row, sends selected columns to an LLM with a custom prompt, and appends the generated structured data as new columns.
+Minimal CSV→LLM→CSV transformer powered by LiteLLM. Point it at a CSV, pick columns, describe the desired JSON schema, and pplyz writes the result back as new columns.
 
-Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider support across Gemini, OpenAI, Anthropic, and more.
-
-## Features
-
-- **Multi-Provider LLM Support**: Use Gemini, OpenAI (GPT), Anthropic (Claude), and 100+ other LLMs via LiteLLM
-- **Structured JSON Output**: Enforced JSON mode ensures reliable, parseable responses
-- **Interactive Prompts**: Specify analysis tasks interactively when running the program
-- **Flexible Column Selection**: Choose any combination of columns to pass to the LLM
-- **Robust Error Handling**: Automatic retry logic with exponential backoff for API errors
-- **Automatic Recovery**: Failed rows are retried once more before writing the CSV, reducing blank outputs
-- **Rate Limiting**: Built-in delays to respect API rate limits
-- **Sequential Processing**: Process rows one-by-one to avoid overwhelming the API
-- **Preview Mode**: Test your prompt on sample rows before processing the entire dataset
-- **Easy Provider Switching**: Change LLM providers by simply changing the model name
-
-## Prerequisites
-
-- Python 3.12 or higher
-- [uv](https://github.com/astral-sh/uv) (Python package manager)
-- API key for your chosen LLM provider:
-  - **Gemini**: [Get API key](https://aistudio.google.com/apikey)
-  - **OpenAI**: [Get API key](https://platform.openai.com/api-keys)
-  - **Anthropic**: [Get API key](https://console.anthropic.com/)
-
-## Installation
-
-### From PyPI (after release)
+### Quick run (uvx)
 
 ```bash
-pip install llmap
-llmap --help
+# No install: pulls pplyz from PyPI / TestPyPI into an ephemeral venv
+uvx pplyz --input data/sample.csv --columns question,answer --output enriched.csv
 ```
 
-### From Source (development)
+Add `--preview` to try a handful of rows first. Use `--list` to print bundled prompt templates.
 
-1. Clone or download this repository:
+### Requirements
+
+- Python 3.12+
+- [uv](https://github.com/astral-sh/uv)
+- One LLM API key supported by LiteLLM (OpenAI, Gemini, Anthropic, Groq, etc.)
+
+### Configuration
+
+pplyz loads configuration in this order (later wins):
+
+1. Existing environment variables
+2. `./pplyz.local.toml`
+3. `~/.config/pplyz/config.toml` (override via `PPLYZ_CONFIG_DIR`)
+
+Start from the template:
 
 ```bash
-git clone https://github.com/<your-username>/llmap.git
-cd llmap
+cp pplyz.local.toml.example pplyz.local.toml
 ```
 
-2. Install dependencies using uv:
+Example config:
+
+```toml
+[env]
+OPENAI_API_KEY = "sk-..."
+
+[pplyz]
+default_model = "gpt-4o-mini"
+```
+
+Only set the providers you need. Common keys: `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, or `PPLYZ_DEFAULT_MODEL` to force a model string like `groq/llama-3.1-8b-instant`.
+
+### Local development
 
 ```bash
 uv sync
+uv run python main.py --help
 ```
 
-3. Set up your local config TOML:
+Pre-commit runs pytest + Ruff automatically. Use `uv tool run pre-commit install` before committing.
+
+### Support
+
+- Issues / PRs welcome.
+- Licensed under MIT (see `LICENSE`).
 
 ```bash
-cp llmap.local.toml.example llmap.local.toml
-```
-
-Edit `llmap.local.toml` and add your API key(s). This file stays in your project directory and is ignored by git.
-
-```toml
-[env]
-OPENAI_API_KEY = "sk-..."
-GEMINI_API_KEY = "AIza..."
-
-[llmap]
-default_model = "gpt-4o-mini"
-```
-
-Alternatively, export the API key directly:
-
-```bash
-# For Gemini
-export GEMINI_API_KEY='your-gemini-api-key-here'
-
-# For OpenAI
-export OPENAI_API_KEY='your-openai-api-key-here'
-
-# For Anthropic
-export ANTHROPIC_API_KEY='your-anthropic-api-key-here'
-# Override default model (optional)
-export LLMAP_DEFAULT_MODEL='groq/llama-3.1-8b-instant'
-# For Groq
-export GROQ_API_KEY='your-groq-api-key-here'
-# For Mistral
-export MISTRAL_API_KEY='your-mistral-api-key-here'
-# For Cohere
-export COHERE_API_KEY='your-cohere-api-key-here'
-```
-
-### Common Provider Environment Variables
-
-| Provider | Example Model Prefix | Environment Variables |
-|----------|---------------------|------------------------|
-| Default model override | *(applies globally)* | `LLMAP_DEFAULT_MODEL` |
-| Google Gemini | `gemini/` | `GEMINI_API_KEY` |
-| OpenAI | `gpt-` or `openai/` | `OPENAI_API_KEY` |
-| Anthropic / Claude | `claude-` or `anthropic/` | `ANTHROPIC_API_KEY` |
-| Groq | `groq/` | `GROQ_API_KEY` |
-| Mistral AI | `mistral/` | `MISTRAL_API_KEY` |
-| Cohere | `cohere/` | `COHERE_API_KEY` |
-| Together AI | `together_ai/` | `TOGETHERAI_API_KEY` or `TOGETHER_AI_TOKEN` |
-| Replicate | `replicate/` | `REPLICATE_API_KEY` |
-| Hugging Face Inference | `huggingface/` | `HUGGINGFACE_API_KEY` |
-| xAI (Grok) | `xai/` | `XAI_API_KEY` |
-| OpenRouter | `openrouter/` | `OPENROUTER_API_KEY` |
-| GroqCloud | `groq/` | `GROQ_API_KEY` |
-| DeepSeek | `deepseek/` | `DEEPSEEK_API_KEY` |
-| Perplexity | `perplexity/` | `PERPLEXITY_API_KEY` |
-| Google Vertex AI | `vertex_ai/` | `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON) |
-| Azure OpenAI | `azure/` | `AZURE_OPENAI_API_KEY` (plus endpoint/deployment vars) |
-| Amazon Bedrock / SageMaker | `bedrock/`, `sagemaker/` | Standard AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) |
-| IBM watsonx | `watsonx/` | `WATSONX_API_KEY` or `WATSONX_APIKEY` |
-| Databricks | `databricks/` | `DATABRICKS_TOKEN` |
-
-Set any combination of keys in `llmap.local.toml` or `~/.config/llmap/config.toml` to toggle providers instantly. Run `llmap --list` (or `-l`) to see the bundled examples (use `uv run python main.py --list` while developing), or supply any LiteLLM-supported model string manually.
-
-### Per-user configuration directory
-
-When `llmap` is installed as a package, keeping credentials inside the project folder is inconvenient. The CLI automatically loads `config.toml` from `~/.config/llmap/` (or `%APPDATA%\llmap\` on Windows). Example:
-
-```toml
-# ~/.config/llmap/config.toml
-[env]
-OPENAI_API_KEY = "sk-..."
-GEMINI_API_KEY = "AIza..."
-
-[llmap]
-default_model = "gpt-4o-mini"
-```
-
-Values in `[env]` become environment variables only if they are not already set. Use the `LLMAP_CONFIG_DIR` environment variable to point to a different directory. Merge order: existing environment → project `llmap.local.toml` → `~/.config/llmap/config.toml`.
-
-## Usage
-
-All examples below assume `llmap` is installed (e.g., via `pip install llmap`). When developing from source, replace the `llmap` command with `uv run python main.py`.
-
-### Basic Usage
-
-```bash
-llmap --input data/yourfile.csv --columns column1,column2 --output results.csv
-```
-
-The program will:
-1. Prompt you to enter a task description interactively
-2. Process each row of the CSV file
-3. Send the selected columns to the LLM with your prompt
-4. Append the structured output as new columns
-5. Save the results to the output file
-
-### Preview Mode
-
-Test your prompt on a few sample rows before processing the entire dataset:
-
-```bash
-llmap --input data/yourfile.csv --columns title,abstract --preview
-```
-
-Preview a different number of rows:
-
-```bash
-llmap --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
+pplyz --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
 ```
 
 ### Examples
@@ -167,7 +66,7 @@ llmap --input data/yourfile.csv --columns title,abstract --preview --preview-row
 #### Example 1: Sentiment Analysis
 
 ```bash
-llmap --input data/reviews.csv --columns review_text --output sentiment_results.csv
+pplyz --input data/reviews.csv --columns review_text --output sentiment_results.csv
 ```
 
 When prompted, enter:
@@ -178,7 +77,7 @@ Analyze the sentiment and classify as positive, negative, or neutral. Also provi
 #### Example 2: Academic Paper Analysis
 
 ```bash
-llmap --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
+pplyz --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
 ```
 
 When prompted, enter:
@@ -190,22 +89,22 @@ Extract the following information: research_topic, methodology, key_findings, an
 
 ```bash
 # Use Gemini 2.0 Flash Lite (default)
-llmap --input data/papers.csv --columns title,abstract --output results.csv
+pplyz --input data/papers.csv --columns title,abstract --output results.csv
 
 # Use OpenAI GPT-4o
-llmap --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
+pplyz --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
 
 # Use Anthropic Claude 3.5 Sonnet
-llmap --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
+pplyz --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
 
 # Use OpenAI GPT-4o Mini (cost-effective)
-llmap --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
+pplyz --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
 ```
 
 #### Example 4: Boolean-Based Classification (Recommended)
 
 ```bash
-llmap \
+pplyz \
   --input data/articles.csv \
   --columns title,abstract \
   --fields 'is_relevant:bool,summary:str' \
@@ -223,7 +122,7 @@ Provide a one-sentence summary.
 #### Example 5: List Available Models
 
 ```bash
-llmap --list
+pplyz --list
 ```
 
 ### Command-Line Options
@@ -234,7 +133,7 @@ llmap --list
 | `--columns` | `-c` | Comma-separated list of columns to use as LLM input | Yes |
 | `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`). Required to keep output columns consistent. | Yes |
 | `--output` | `-o` | Path to output CSV file (defaults to overwriting the input file when omitted) | No |
-| `--model` | `-m` | LLM model name (default: `LLMAP_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
+| `--model` | `-m` | LLM model name (default: `PPLYZ_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
 | `--list` | `-l` | List supported models and exit | No |
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
@@ -261,7 +160,7 @@ Any field without `:type` defaults to `str`. Supported types: `bool`, `int`, `fl
 Use **boolean fields** for yes/no decisions - these are strictly enforced across all LLM providers:
 
 ```bash
-llmap \
+pplyz \
   --input data.csv \
   --columns title,abstract \
   --fields "is_relevant:bool,reason:str" \
@@ -375,25 +274,25 @@ LLM Analyser supports 100+ models via LiteLLM. Common examples:
 - `claude-3-5-sonnet-20241022` - High quality
 - `claude-3-haiku-20240307` - Fast
 
-For the full list, run `llmap --list` (or `-l`) (use `uv run python main.py --list` from source) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
+For the full list, run `pplyz --list` (or `-l`) (use `uv run python main.py --list` from source) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
 
 ## Configuration
 
-Key configuration options can be found in `llmap/config.py` and `llmap/settings.py`:
+Key configuration options can be found in `pplyz/config.py` and `pplyz/settings.py`:
 
-- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAP_DEFAULT_MODEL` in your config TOML or environment.
+- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `PPLYZ_DEFAULT_MODEL` in your config TOML or environment.
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
 - `MAX_RETRIES`: Maximum number of retry attempts (`len(RETRY_BACKOFF_SCHEDULE) + 1`)
 - `RETRY_BACKOFF_SCHEDULE`: Fixed delays between retries (`[1, 2, 3, 5, 10, 10, 10, 10, 10]` seconds)
 - `REQUEST_DELAY`: Delay between API requests (0.5 seconds)
-- `llmap/settings.py`: Resolves user-level configuration from `~/.config/llmap/`
+- `pplyz/settings.py`: Resolves user-level configuration from `~/.config/pplyz/`
 
 ## Project Structure
 
 ```
-llmap/
-├── main.py                 # Dev entry point (calls llmap.cli)
-├── llmap/
+pplyz/
+├── main.py                 # Dev entry point (calls pplyz.cli)
+├── pplyz/
 │   ├── __init__.py        # Package initialization
 │   ├── cli.py             # Command-line interface
 │   ├── config.py          # Static configuration settings
@@ -404,7 +303,7 @@ llmap/
 │   └── utils.py           # Shared helpers
 ├── data/                   # Input CSV files
 ├── pyproject.toml         # Project dependencies
-├── llmap.local.toml.example # Example local configuration
+├── pplyz.local.toml.example # Example local configuration
 └── README.md              # This file
 ```
 
@@ -433,7 +332,7 @@ The tool includes comprehensive error handling:
 Error: API key for gemini not found. Please set the GEMINI_API_KEY environment variable.
 ```
 
-**Solution**: Make sure you've set the appropriate API key in `llmap.local.toml`, `~/.config/llmap/config.toml`, or as an environment variable.
+**Solution**: Make sure you've set the appropriate API key in `pplyz.local.toml`, `~/.config/pplyz/config.toml`, or as an environment variable.
 
 ### Rate Limit Errors
 
@@ -508,7 +407,7 @@ uv run pytest
 Run tests with coverage:
 
 ```bash
-uv run pytest --cov=llmap --cov-report=html
+uv run pytest --cov=pplyz --cov-report=html
 ```
 
 Run specific test file:

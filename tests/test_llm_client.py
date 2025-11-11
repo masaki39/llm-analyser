@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from litellm.exceptions import RateLimitError
 
-from llmap import config
-from llmap.llm_client import LLMClient
+from pplyz import config
+from pplyz.llm_client import LLMClient
 
 
 class TestLLMClientInitialization:
@@ -50,11 +50,11 @@ class TestLLMClientInitialization:
     def test_init_uses_env_default_model(self, mock_env_vars, monkeypatch):
         """LLMClient should pick up env override when model_name omitted."""
         custom_default = "groq/llama-3.1-8b-instant"
-        monkeypatch.setenv("LLMAP_DEFAULT_MODEL", custom_default)
+        monkeypatch.setenv("PPLYZ_DEFAULT_MODEL", custom_default)
         client = LLMClient()
         assert client.model_name == custom_default
         assert client.provider == "groq"
-        monkeypatch.delenv("LLMAP_DEFAULT_MODEL", raising=False)
+        monkeypatch.delenv("PPLYZ_DEFAULT_MODEL", raising=False)
 
 
 class TestProviderDetection:
@@ -165,7 +165,7 @@ class TestRateLimiting:
         elapsed = time.time() - start_time
 
         # Should have at least REQUEST_DELAY between calls
-        from llmap.config import REQUEST_DELAY
+        from pplyz.config import REQUEST_DELAY
 
         assert elapsed >= REQUEST_DELAY
 
@@ -178,7 +178,7 @@ class TestRetryLogic:
         """Test retry on rate limit error."""
         client = LLMClient(model_name="gemini/gemini-2.5-flash-lite")
 
-        with patch("llmap.llm_client.completion") as mock_completion:
+        with patch("pplyz.llm_client.completion") as mock_completion:
             # First call raises RateLimitError, second succeeds
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
