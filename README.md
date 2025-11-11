@@ -28,9 +28,19 @@ Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider suppo
 
 ## Installation
 
+### From PyPI (after release)
+
+```bash
+pip install llman
+llman --help
+```
+
+### From Source (development)
+
 1. Clone or download this repository:
 
 ```bash
+git clone https://github.com/<your-username>/llman.git
 cd llman
 ```
 
@@ -104,14 +114,16 @@ export COHERE_API_KEY='your-cohere-api-key-here'
 | IBM watsonx | `watsonx/` | `WATSONX_API_KEY` or `WATSONX_APIKEY` |
 | Databricks | `databricks/` | `DATABRICKS_TOKEN` |
 
-Set any combination of keys in `.env` to toggle providers instantly. Run `uv run python main.py --list` (or `-l`) to see the bundled examples, or supply any LiteLLM-supported model string manually.
+Set any combination of keys in `.env` to toggle providers instantly. Run `llman --list` (or `-l`) to see the bundled examples (use `uv run python main.py --list` while developing), or supply any LiteLLM-supported model string manually.
 
 ## Usage
+
+All examples below assume `llman` is installed (e.g., via `pip install llman`). When developing from source, replace the `llman` command with `uv run python main.py`.
 
 ### Basic Usage
 
 ```bash
-uv run python main.py --input data/yourfile.csv --columns column1,column2 --output results.csv
+llman --input data/yourfile.csv --columns column1,column2 --output results.csv
 ```
 
 The program will:
@@ -126,13 +138,13 @@ The program will:
 Test your prompt on a few sample rows before processing the entire dataset:
 
 ```bash
-uv run python main.py --input data/yourfile.csv --columns title,abstract --preview
+llman --input data/yourfile.csv --columns title,abstract --preview
 ```
 
 Preview a different number of rows:
 
 ```bash
-uv run python main.py --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
+llman --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
 ```
 
 ### Examples
@@ -140,7 +152,7 @@ uv run python main.py --input data/yourfile.csv --columns title,abstract --previ
 #### Example 1: Sentiment Analysis
 
 ```bash
-uv run python main.py --input data/reviews.csv --columns review_text --output sentiment_results.csv
+llman --input data/reviews.csv --columns review_text --output sentiment_results.csv
 ```
 
 When prompted, enter:
@@ -151,7 +163,7 @@ Analyze the sentiment and classify as positive, negative, or neutral. Also provi
 #### Example 2: Academic Paper Analysis
 
 ```bash
-uv run python main.py --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
+llman --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
 ```
 
 When prompted, enter:
@@ -163,22 +175,22 @@ Extract the following information: research_topic, methodology, key_findings, an
 
 ```bash
 # Use Gemini 2.0 Flash Lite (default)
-uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv
+llman --input data/papers.csv --columns title,abstract --output results.csv
 
 # Use OpenAI GPT-4o
-uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
+llman --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
 
 # Use Anthropic Claude 3.5 Sonnet
-uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
+llman --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
 
 # Use OpenAI GPT-4o Mini (cost-effective)
-uv run python main.py --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
+llman --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
 ```
 
 #### Example 4: Boolean-Based Classification (Recommended)
 
 ```bash
-uv run python main.py \
+llman \
   --input data/articles.csv \
   --columns title,abstract \
   --fields 'is_relevant:bool,summary:str' \
@@ -196,7 +208,7 @@ Provide a one-sentence summary.
 #### Example 5: List Available Models
 
 ```bash
-uv run python main.py --list
+llman --list
 ```
 
 ### Command-Line Options
@@ -234,7 +246,7 @@ Any field without `:type` defaults to `str`. Supported types: `bool`, `int`, `fl
 Use **boolean fields** for yes/no decisions - these are strictly enforced across all LLM providers:
 
 ```bash
-uv run python main.py \
+llman \
   --input data.csv \
   --columns title,abstract \
   --fields "is_relevant:bool,reason:str" \
@@ -348,7 +360,7 @@ LLM Analyser supports 100+ models via LiteLLM. Common examples:
 - `claude-3-5-sonnet-20241022` - High quality
 - `claude-3-haiku-20240307` - Fast
 
-For the full list, run `uv run python main.py --list` (or `-l`) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
+For the full list, run `llman --list` (or `-l`) (use `uv run python main.py --list` from source) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
 
 ## Configuration
 

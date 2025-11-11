@@ -1,31 +1,47 @@
 [project]
 name = "llman"
-version = "0.2.0"
+version = "0.1.0"
 description = "LLM-powered CSV data analyzer with structured output generation using LiteLLM (short for LLM Analyser)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "litellm>=1.0.0",
     "pandas>=2.2.0",
+    "prompt-toolkit>=3.0.0",
     "tenacity>=8.2.0",
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
 ]
 
+[project.scripts]
+llman = "llman.cli:main"
+
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.2",
     "pytest>=8.0.0",
     "pytest-mock>=3.12.0",
     "pytest-cov>=4.1.0",
     "pre-commit>=3.0.0",
+    "twine>=5.1.1",
     "ruff>=0.8.0",
 ]
 
 [dependency-groups]
 dev = [
+    "build>=1.2.2",
     "pre-commit>=4.3.0",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
+    "twine>=5.1.1",
     "ruff>=0.14.2",
 ]
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["llman*"]
+exclude = ["tests*", "examples*", "docs*"]
