@@ -167,7 +167,7 @@ The processor continues processing even when individual rows fail:
 Preview mode allows users to test prompts before full processing:
 
 ```bash
-uv run python main.py --input data.csv --columns col1,col2 --preview
+llman --input data.csv --columns col1,col2 --preview
 ```
 
 **Features**:
@@ -180,7 +180,7 @@ uv run python main.py --input data.csv --columns col1,col2 --preview
 
 ### Environment Variables
 
-API keys are managed via environment variables or `.env` files:
+API keys are managed via environment variables or TOML config files:
 
 - **Security**: Keeps secrets out of code
 - **Flexibility**: Easy to switch between dev/prod environments
@@ -455,7 +455,7 @@ With default settings:
 
 ## Security Considerations
 
-1. **API Key Storage**: Never commit `.env` files
+1. **API Key Storage**: Never commit secret config files (`llman.local.toml`, `.env`, etc.)
 2. **Input Validation**: Validate column names and file paths
 3. **Output Sanitization**: Be cautious with user-generated prompts
 4. **Rate Limiting**: Prevents accidental cost overruns

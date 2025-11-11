@@ -9,8 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-# Environment variables (contains API keys)
+# Local secrets/config
 .env
+llman.local.toml
 
 # Data files
 data/

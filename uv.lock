@@ -915,7 +915,6 @@ dependencies = [
     { name = "pandas" },
     { name = "prompt-toolkit" },
     { name = "pydantic" },
-    { name = "python-dotenv" },
     { name = "tenacity" },
 ]
 
@@ -952,7 +951,6 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.12.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "tenacity", specifier = ">=8.2.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.1.1" },

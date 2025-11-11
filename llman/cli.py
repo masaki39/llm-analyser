@@ -5,8 +5,6 @@ import logging
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from llman.config import (
     API_KEY_ENV_VARS,
     DATA_DIR,
@@ -16,6 +14,7 @@ from llman.config import (
 from llman.llm_client import LLMClient
 from llman.processor import CSVProcessor
 from llman.schemas import create_output_model_from_string
+from llman.settings import load_runtime_configuration
 
 try:
     from prompt_toolkit import PromptSession
@@ -70,7 +69,7 @@ Examples:
   llman --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.5-flash-lite
 
 API Keys:
-  Set the appropriate provider API key via environment variables or .env (see README).
+  Set the appropriate provider API key via environment variables or config TOML (see README).
         """,
     )
 
@@ -218,8 +217,8 @@ def list_supported_models() -> None:
 
 def main() -> None:
     """Main entry point for the LLM Analyser CLI."""
-    # Load environment variables from .env file if present
-    load_dotenv()
+    # Load environment/configuration files
+    load_runtime_configuration()
 
     # Parse arguments
     args = parse_arguments()
@@ -287,7 +286,9 @@ def main() -> None:
             logger.error(
                 f"  export {env_var}='your-api-key-here'  # For {provider} models"
             )
-        logger.error("\nOr create a .env file with the appropriate API key.")
+        logger.error(
+            "\nOr configure llman.local.toml or ~/.config/llman/config.toml with the appropriate API key."
+        )
         sys.exit(1)
 
     # Initialize processor

@@ -50,22 +50,21 @@ cd llman
 uv sync
 ```
 
-3. Set up your API key:
+3. Set up your local config TOML:
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
+cp llman.local.toml.example llman.local.toml
+```
 
-# Edit .env and add your API key(s)
-# For Gemini:
-# GEMINI_API_KEY=your-gemini-api-key-here
-# For OpenAI:
-# OPENAI_API_KEY=your-openai-api-key-here
-# For Anthropic:
-# ANTHROPIC_API_KEY=your-anthropic-api-key-here
-# Override default model (optional):
-# LLMAN_DEFAULT_MODEL=gemini/gemini-2.5-flash-lite
-# For Groq / Mistral / Cohere / etc. see the table below
+Edit `llman.local.toml` and add your API key(s). This file stays in your project directory and is ignored by git.
+
+```toml
+[env]
+OPENAI_API_KEY = "sk-..."
+GEMINI_API_KEY = "AIza..."
+
+[llman]
+default_model = "gpt-4o-mini"
 ```
 
 Alternatively, export the API key directly:
@@ -114,7 +113,23 @@ export COHERE_API_KEY='your-cohere-api-key-here'
 | IBM watsonx | `watsonx/` | `WATSONX_API_KEY` or `WATSONX_APIKEY` |
 | Databricks | `databricks/` | `DATABRICKS_TOKEN` |
 
-Set any combination of keys in `.env` to toggle providers instantly. Run `llman --list` (or `-l`) to see the bundled examples (use `uv run python main.py --list` while developing), or supply any LiteLLM-supported model string manually.
+Set any combination of keys in `llman.local.toml` or `~/.config/llman/config.toml` to toggle providers instantly. Run `llman --list` (or `-l`) to see the bundled examples (use `uv run python main.py --list` while developing), or supply any LiteLLM-supported model string manually.
+
+### Per-user configuration directory
+
+When `llman` is installed as a package, keeping credentials inside the project folder is inconvenient. The CLI automatically loads `config.toml` from `~/.config/llman/` (or `%APPDATA%\llman\` on Windows). Example:
+
+```toml
+# ~/.config/llman/config.toml
+[env]
+OPENAI_API_KEY = "sk-..."
+GEMINI_API_KEY = "AIza..."
+
+[llman]
+default_model = "gpt-4o-mini"
+```
+
+Values in `[env]` become environment variables only if they are not already set. Use the `LLMAN_CONFIG_DIR` environment variable to point to a different directory. Merge order: existing environment → project `llman.local.toml` → `~/.config/llman/config.toml`.
 
 ## Usage
 
@@ -364,28 +379,32 @@ For the full list, run `llman --list` (or `-l`) (use `uv run python main.py --li
 
 ## Configuration
 
-Key configuration options can be found in `llman/config.py`:
+Key configuration options can be found in `llman/config.py` and `llman/settings.py`:
 
-- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAN_DEFAULT_MODEL` in `.env`.
+- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAN_DEFAULT_MODEL` in your config TOML or environment.
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
 - `MAX_RETRIES`: Maximum number of retry attempts (`len(RETRY_BACKOFF_SCHEDULE) + 1`)
 - `RETRY_BACKOFF_SCHEDULE`: Fixed delays between retries (`[1, 2, 3, 5, 10, 10, 10, 10, 10]` seconds)
 - `REQUEST_DELAY`: Delay between API requests (0.5 seconds)
+- `llman/settings.py`: Resolves user-level configuration from `~/.config/llman/`
 
 ## Project Structure
 
 ```
 llman/
-├── main.py                 # CLI entry point
+├── main.py                 # Dev entry point (calls llman.cli)
 ├── llman/
 │   ├── __init__.py        # Package initialization
-│   ├── config.py          # Configuration settings
+│   ├── cli.py             # Command-line interface
+│   ├── config.py          # Static configuration settings
 │   ├── llm_client.py      # LLM API client with retry logic
 │   ├── processor.py       # CSV processing logic
-│   └── schemas.py         # Output schema definitions
+│   ├── schemas.py         # Output schema definitions
+│   ├── settings.py        # Runtime configuration loader
+│   └── utils.py           # Shared helpers
 ├── data/                   # Input CSV files
 ├── pyproject.toml         # Project dependencies
-├── .env.example           # Example environment variables
+├── llman.local.toml.example # Example local configuration
 └── README.md              # This file
 ```
 
@@ -414,7 +433,7 @@ The tool includes comprehensive error handling:
 Error: API key for gemini not found. Please set the GEMINI_API_KEY environment variable.
 ```
 
-**Solution**: Make sure you've set the appropriate API key for your chosen model in `.env` or as an environment variable.
+**Solution**: Make sure you've set the appropriate API key in `llman.local.toml`, `~/.config/llman/config.toml`, or as an environment variable.
 
 ### Rate Limit Errors
 
