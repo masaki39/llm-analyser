@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 # API Configuration
-DEFAULT_MODEL_ENV_VAR = "LLMAN_DEFAULT_MODEL"
+DEFAULT_MODEL_ENV_VAR = "LLMAP_DEFAULT_MODEL"
 DEFAULT_MODEL_FALLBACK = "gemini/gemini-2.5-flash-lite"
 
 

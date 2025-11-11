@@ -11,7 +11,7 @@ wheels/
 
 # Local secrets/config
 .env
-llman.local.toml
+llmap.local.toml
 
 # Data files
 data/

@@ -1,12 +1,12 @@
-"""Tests for llman.settings."""
+"""Tests for llmap.settings."""
 
 import os
 
-from llman import settings
+from llmap import settings
 
 
 def test_determine_config_dir_prefers_override(monkeypatch, tmp_path):
-    """LLMAN_CONFIG_DIR should take precedence."""
+    """LLMAP_CONFIG_DIR should take precedence."""
     override = tmp_path / "custom"
     monkeypatch.setenv(settings.CONFIG_DIR_ENV, str(override))
 
@@ -21,7 +21,7 @@ def test_load_runtime_configuration_reads_toml(monkeypatch, tmp_path):
     project_root.mkdir()
     monkeypatch.setattr(settings, "PROJECT_ROOT", project_root)
 
-    config_dir = tmp_path / ".config" / "llman"
+    config_dir = tmp_path / ".config" / "llmap"
     config_dir.mkdir(parents=True)
 
     config_file = config_dir / settings.CONFIG_TOML_NAME
@@ -31,20 +31,20 @@ def test_load_runtime_configuration_reads_toml(monkeypatch, tmp_path):
 GEMINI_API_KEY = "gemini-key"
 OPENAI_API_KEY = "openai-key"
 
-[llman]
+[llmap]
 default_model = "gemini/example-model"
 """
     )
 
     monkeypatch.setenv(settings.CONFIG_DIR_ENV, str(config_dir))
-    for key in ("OPENAI_API_KEY", "GEMINI_API_KEY", "LLMAN_DEFAULT_MODEL"):
+    for key in ("OPENAI_API_KEY", "GEMINI_API_KEY", "LLMAP_DEFAULT_MODEL"):
         monkeypatch.delenv(key, raising=False)
 
     settings.load_runtime_configuration()
 
     assert os.environ["OPENAI_API_KEY"] == "openai-key"
     assert os.environ["GEMINI_API_KEY"] == "gemini-key"
-    assert os.environ["LLMAN_DEFAULT_MODEL"] == "gemini/example-model"
+    assert os.environ["LLMAP_DEFAULT_MODEL"] == "gemini/example-model"
 
 
 def test_local_config_takes_precedence(monkeypatch, tmp_path):
@@ -57,13 +57,13 @@ def test_local_config_takes_precedence(monkeypatch, tmp_path):
 [env]
 OPENAI_API_KEY = "local-openai"
 
-[llman]
+[llmap]
 default_model = "local-model"
 """
     )
     monkeypatch.setattr(settings, "PROJECT_ROOT", project_root)
 
-    config_dir = tmp_path / ".config" / "llman"
+    config_dir = tmp_path / ".config" / "llmap"
     config_dir.mkdir(parents=True)
     config_file = config_dir / settings.CONFIG_TOML_NAME
     config_file.write_text(
@@ -72,17 +72,17 @@ default_model = "local-model"
 OPENAI_API_KEY = "global-openai"
 GEMINI_API_KEY = "global-gemini"
 
-[llman]
+[llmap]
 default_model = "global-model"
 """
     )
 
     monkeypatch.setenv(settings.CONFIG_DIR_ENV, str(config_dir))
-    for key in ("OPENAI_API_KEY", "GEMINI_API_KEY", "LLMAN_DEFAULT_MODEL"):
+    for key in ("OPENAI_API_KEY", "GEMINI_API_KEY", "LLMAP_DEFAULT_MODEL"):
         monkeypatch.delenv(key, raising=False)
 
     settings.load_runtime_configuration()
 
     assert os.environ["OPENAI_API_KEY"] == "local-openai"
     assert os.environ["GEMINI_API_KEY"] == "global-gemini"
-    assert os.environ["LLMAN_DEFAULT_MODEL"] == "local-model"
+    assert os.environ["LLMAP_DEFAULT_MODEL"] == "local-model"

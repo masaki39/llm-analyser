@@ -1,8 +1,8 @@
-# Example local configuration for llman (development use)
+# Example local configuration for llmap (development use)
 
 [env]
 # Override default model (optional)
-LLMAN_DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
+LLMAP_DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
 
 # Gemini API Key
 GEMINI_API_KEY = "your-gemini-api-key-here"
@@ -62,6 +62,6 @@ WATSONX_API_KEY = "your-watsonx-api-key-here"
 # Databricks
 DATABRICKS_TOKEN = "your-databricks-token-here"
 
-[llman]
-# You can also set llman-specific defaults here
+[llmap]
+# You can also set llmap-specific defaults here
 default_model = "gemini/gemini-2.5-flash-lite"

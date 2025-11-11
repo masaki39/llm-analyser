@@ -1,6 +1,6 @@
-# LLM Analyser (llman)
+# LLM Analyser (llmap)
 
-**llman** is a Python tool for processing CSV data using Large Language Models (LLMs) to generate structured output. The name "llman" is short for "LLM Analyser". The tool processes CSV files row-by-row, sends selected columns to an LLM with a custom prompt, and appends the generated structured data as new columns.
+**llmap** is a Python tool for processing CSV data using Large Language Models (LLMs) to generate structured output. The name "llmap" is short for "LLM Analyser". The tool processes CSV files row-by-row, sends selected columns to an LLM with a custom prompt, and appends the generated structured data as new columns.
 
 Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider support across Gemini, OpenAI, Anthropic, and more.
 
@@ -31,8 +31,8 @@ Built with [LiteLLM](https://docs.litellm.ai/) for seamless multi-provider suppo
 ### From PyPI (after release)
 
 ```bash
-pip install llman
-llman --help
+pip install llmap
+llmap --help
 ```
 
 ### From Source (development)
@@ -40,8 +40,8 @@ llman --help
 1. Clone or download this repository:
 
 ```bash
-git clone https://github.com/<your-username>/llman.git
-cd llman
+git clone https://github.com/<your-username>/llmap.git
+cd llmap
 ```
 
 2. Install dependencies using uv:
@@ -53,17 +53,17 @@ uv sync
 3. Set up your local config TOML:
 
 ```bash
-cp llman.local.toml.example llman.local.toml
+cp llmap.local.toml.example llmap.local.toml
 ```
 
-Edit `llman.local.toml` and add your API key(s). This file stays in your project directory and is ignored by git.
+Edit `llmap.local.toml` and add your API key(s). This file stays in your project directory and is ignored by git.
 
 ```toml
 [env]
 OPENAI_API_KEY = "sk-..."
 GEMINI_API_KEY = "AIza..."
 
-[llman]
+[llmap]
 default_model = "gpt-4o-mini"
 ```
 
@@ -79,7 +79,7 @@ export OPENAI_API_KEY='your-openai-api-key-here'
 # For Anthropic
 export ANTHROPIC_API_KEY='your-anthropic-api-key-here'
 # Override default model (optional)
-export LLMAN_DEFAULT_MODEL='groq/llama-3.1-8b-instant'
+export LLMAP_DEFAULT_MODEL='groq/llama-3.1-8b-instant'
 # For Groq
 export GROQ_API_KEY='your-groq-api-key-here'
 # For Mistral
@@ -92,7 +92,7 @@ export COHERE_API_KEY='your-cohere-api-key-here'
 
 | Provider | Example Model Prefix | Environment Variables |
 |----------|---------------------|------------------------|
-| Default model override | *(applies globally)* | `LLMAN_DEFAULT_MODEL` |
+| Default model override | *(applies globally)* | `LLMAP_DEFAULT_MODEL` |
 | Google Gemini | `gemini/` | `GEMINI_API_KEY` |
 | OpenAI | `gpt-` or `openai/` | `OPENAI_API_KEY` |
 | Anthropic / Claude | `claude-` or `anthropic/` | `ANTHROPIC_API_KEY` |
@@ -113,32 +113,32 @@ export COHERE_API_KEY='your-cohere-api-key-here'
 | IBM watsonx | `watsonx/` | `WATSONX_API_KEY` or `WATSONX_APIKEY` |
 | Databricks | `databricks/` | `DATABRICKS_TOKEN` |
 
-Set any combination of keys in `llman.local.toml` or `~/.config/llman/config.toml` to toggle providers instantly. Run `llman --list` (or `-l`) to see the bundled examples (use `uv run python main.py --list` while developing), or supply any LiteLLM-supported model string manually.
+Set any combination of keys in `llmap.local.toml` or `~/.config/llmap/config.toml` to toggle providers instantly. Run `llmap --list` (or `-l`) to see the bundled examples (use `uv run python main.py --list` while developing), or supply any LiteLLM-supported model string manually.
 
 ### Per-user configuration directory
 
-When `llman` is installed as a package, keeping credentials inside the project folder is inconvenient. The CLI automatically loads `config.toml` from `~/.config/llman/` (or `%APPDATA%\llman\` on Windows). Example:
+When `llmap` is installed as a package, keeping credentials inside the project folder is inconvenient. The CLI automatically loads `config.toml` from `~/.config/llmap/` (or `%APPDATA%\llmap\` on Windows). Example:
 
 ```toml
-# ~/.config/llman/config.toml
+# ~/.config/llmap/config.toml
 [env]
 OPENAI_API_KEY = "sk-..."
 GEMINI_API_KEY = "AIza..."
 
-[llman]
+[llmap]
 default_model = "gpt-4o-mini"
 ```
 
-Values in `[env]` become environment variables only if they are not already set. Use the `LLMAN_CONFIG_DIR` environment variable to point to a different directory. Merge order: existing environment → project `llman.local.toml` → `~/.config/llman/config.toml`.
+Values in `[env]` become environment variables only if they are not already set. Use the `LLMAP_CONFIG_DIR` environment variable to point to a different directory. Merge order: existing environment → project `llmap.local.toml` → `~/.config/llmap/config.toml`.
 
 ## Usage
 
-All examples below assume `llman` is installed (e.g., via `pip install llman`). When developing from source, replace the `llman` command with `uv run python main.py`.
+All examples below assume `llmap` is installed (e.g., via `pip install llmap`). When developing from source, replace the `llmap` command with `uv run python main.py`.
 
 ### Basic Usage
 
 ```bash
-llman --input data/yourfile.csv --columns column1,column2 --output results.csv
+llmap --input data/yourfile.csv --columns column1,column2 --output results.csv
 ```
 
 The program will:
@@ -153,13 +153,13 @@ The program will:
 Test your prompt on a few sample rows before processing the entire dataset:
 
 ```bash
-llman --input data/yourfile.csv --columns title,abstract --preview
+llmap --input data/yourfile.csv --columns title,abstract --preview
 ```
 
 Preview a different number of rows:
 
 ```bash
-llman --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
+llmap --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
 ```
 
 ### Examples
@@ -167,7 +167,7 @@ llman --input data/yourfile.csv --columns title,abstract --preview --preview-row
 #### Example 1: Sentiment Analysis
 
 ```bash
-llman --input data/reviews.csv --columns review_text --output sentiment_results.csv
+llmap --input data/reviews.csv --columns review_text --output sentiment_results.csv
 ```
 
 When prompted, enter:
@@ -178,7 +178,7 @@ Analyze the sentiment and classify as positive, negative, or neutral. Also provi
 #### Example 2: Academic Paper Analysis
 
 ```bash
-llman --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
+llmap --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
 ```
 
 When prompted, enter:
@@ -190,22 +190,22 @@ Extract the following information: research_topic, methodology, key_findings, an
 
 ```bash
 # Use Gemini 2.0 Flash Lite (default)
-llman --input data/papers.csv --columns title,abstract --output results.csv
+llmap --input data/papers.csv --columns title,abstract --output results.csv
 
 # Use OpenAI GPT-4o
-llman --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
+llmap --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
 
 # Use Anthropic Claude 3.5 Sonnet
-llman --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
+llmap --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
 
 # Use OpenAI GPT-4o Mini (cost-effective)
-llman --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
+llmap --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
 ```
 
 #### Example 4: Boolean-Based Classification (Recommended)
 
 ```bash
-llman \
+llmap \
   --input data/articles.csv \
   --columns title,abstract \
   --fields 'is_relevant:bool,summary:str' \
@@ -223,7 +223,7 @@ Provide a one-sentence summary.
 #### Example 5: List Available Models
 
 ```bash
-llman --list
+llmap --list
 ```
 
 ### Command-Line Options
@@ -234,7 +234,7 @@ llman --list
 | `--columns` | `-c` | Comma-separated list of columns to use as LLM input | Yes |
 | `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`). Required to keep output columns consistent. | Yes |
 | `--output` | `-o` | Path to output CSV file (defaults to overwriting the input file when omitted) | No |
-| `--model` | `-m` | LLM model name (default: `LLMAN_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
+| `--model` | `-m` | LLM model name (default: `LLMAP_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
 | `--list` | `-l` | List supported models and exit | No |
 | `--preview` | `-p` | Preview results on sample rows without saving | No |
 | `--preview-rows` | | Number of rows to preview (default: 3) | No |
@@ -261,7 +261,7 @@ Any field without `:type` defaults to `str`. Supported types: `bool`, `int`, `fl
 Use **boolean fields** for yes/no decisions - these are strictly enforced across all LLM providers:
 
 ```bash
-llman \
+llmap \
   --input data.csv \
   --columns title,abstract \
   --fields "is_relevant:bool,reason:str" \
@@ -375,25 +375,25 @@ LLM Analyser supports 100+ models via LiteLLM. Common examples:
 - `claude-3-5-sonnet-20241022` - High quality
 - `claude-3-haiku-20240307` - Fast
 
-For the full list, run `llman --list` (or `-l`) (use `uv run python main.py --list` from source) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
+For the full list, run `llmap --list` (or `-l`) (use `uv run python main.py --list` from source) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
 
 ## Configuration
 
-Key configuration options can be found in `llman/config.py` and `llman/settings.py`:
+Key configuration options can be found in `llmap/config.py` and `llmap/settings.py`:
 
-- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAN_DEFAULT_MODEL` in your config TOML or environment.
+- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `LLMAP_DEFAULT_MODEL` in your config TOML or environment.
 - `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
 - `MAX_RETRIES`: Maximum number of retry attempts (`len(RETRY_BACKOFF_SCHEDULE) + 1`)
 - `RETRY_BACKOFF_SCHEDULE`: Fixed delays between retries (`[1, 2, 3, 5, 10, 10, 10, 10, 10]` seconds)
 - `REQUEST_DELAY`: Delay between API requests (0.5 seconds)
-- `llman/settings.py`: Resolves user-level configuration from `~/.config/llman/`
+- `llmap/settings.py`: Resolves user-level configuration from `~/.config/llmap/`
 
 ## Project Structure
 
 ```
-llman/
-├── main.py                 # Dev entry point (calls llman.cli)
-├── llman/
+llmap/
+├── main.py                 # Dev entry point (calls llmap.cli)
+├── llmap/
 │   ├── __init__.py        # Package initialization
 │   ├── cli.py             # Command-line interface
 │   ├── config.py          # Static configuration settings
@@ -404,7 +404,7 @@ llman/
 │   └── utils.py           # Shared helpers
 ├── data/                   # Input CSV files
 ├── pyproject.toml         # Project dependencies
-├── llman.local.toml.example # Example local configuration
+├── llmap.local.toml.example # Example local configuration
 └── README.md              # This file
 ```
 
@@ -433,7 +433,7 @@ The tool includes comprehensive error handling:
 Error: API key for gemini not found. Please set the GEMINI_API_KEY environment variable.
 ```
 
-**Solution**: Make sure you've set the appropriate API key in `llman.local.toml`, `~/.config/llman/config.toml`, or as an environment variable.
+**Solution**: Make sure you've set the appropriate API key in `llmap.local.toml`, `~/.config/llmap/config.toml`, or as an environment variable.
 
 ### Rate Limit Errors
 
@@ -508,7 +508,7 @@ uv run pytest
 Run tests with coverage:
 
 ```bash
-uv run pytest --cov=llman --cov-report=html
+uv run pytest --cov=llmap --cov-report=html
 ```
 
 Run specific test file:

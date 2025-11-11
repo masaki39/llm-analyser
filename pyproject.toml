@@ -1,5 +1,5 @@
 [project]
-name = "llman"
+name = "llmap"
 version = "0.1.0"
 description = "LLM-powered CSV data analyzer with structured output generation using LiteLLM (short for LLM Analyser)"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-llman = "llman.cli:main"
+llmap = "llmap.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -42,5 +42,5 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["llman*"]
+include = ["llmap*"]
 exclude = ["tests*", "examples*", "docs*"]

@@ -1,8 +1,8 @@
-# llman - Development Notes
+# llmap - Development Notes
 
 ## Project Overview
 
-llman (short for "LLM Analyser") is a Python-based command-line tool designed to process CSV data using Large Language Models (LLMs). The tool enables users to augment their datasets with AI-generated structured outputs by processing each row sequentially through an LLM API.
+llmap (short for "LLM Analyser") is a Python-based command-line tool designed to process CSV data using Large Language Models (LLMs). The tool enables users to augment their datasets with AI-generated structured outputs by processing each row sequentially through an LLM API.
 
 **Version 0.2.0** introduces LiteLLM integration for multi-provider support, enabling seamless switching between Gemini, OpenAI, Anthropic, and 100+ other LLM providers with enforced JSON structured output.
 
@@ -13,7 +13,7 @@ llman (short for "LLM Analyser") is a Python-based command-line tool designed to
 The project is structured into modular components for maintainability and separation of concerns:
 
 ```
-llman/
+llmap/
 ├── config.py       # Configuration constants and settings
 ├── llm_client.py   # LLM API client with retry logic
 ├── processor.py    # CSV processing orchestration
@@ -167,7 +167,7 @@ The processor continues processing even when individual rows fail:
 Preview mode allows users to test prompts before full processing:
 
 ```bash
-llman --input data.csv --columns col1,col2 --preview
+llmap --input data.csv --columns col1,col2 --preview
 ```
 
 **Features**:
@@ -422,7 +422,7 @@ Minimal dependency philosophy:
 Current approach: Git repository + uv
 
 **Future Options**:
-- PyPI package: `pip install llman`
+- PyPI package: `pip install llmap`
 - Docker container: Isolated environment
 - Pre-built binaries: PyInstaller for non-Python users
 
@@ -455,7 +455,7 @@ With default settings:
 
 ## Security Considerations
 
-1. **API Key Storage**: Never commit secret config files (`llman.local.toml`, `.env`, etc.)
+1. **API Key Storage**: Never commit secret config files (`llmap.local.toml`, `.env`, etc.)
 2. **Input Validation**: Validate column names and file paths
 3. **Output Sanitization**: Be cautious with user-generated prompts
 4. **Rate Limiting**: Prevents accidental cost overruns

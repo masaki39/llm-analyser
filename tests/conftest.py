@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from llman.config import API_KEY_ENV_VARS
+from llmap.config import API_KEY_ENV_VARS
 
 
 @pytest.fixture

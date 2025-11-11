@@ -907,7 +907,7 @@ wheels = [
 ]
 
 [[package]]
-name = "llman"
+name = "llmap"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -2,7 +2,7 @@
 
 import importlib
 
-import llman.config as config
+import llmap.config as config
 
 
 def reload_config():
@@ -17,17 +17,17 @@ class TestConfig:
 
     def test_default_model(self, monkeypatch):
         """Test default model is set correctly."""
-        monkeypatch.delenv("LLMAN_DEFAULT_MODEL", raising=False)
+        monkeypatch.delenv("LLMAP_DEFAULT_MODEL", raising=False)
         cfg = reload_config()
         assert cfg.DEFAULT_MODEL == cfg.DEFAULT_MODEL_FALLBACK
 
     def test_default_model_env_override(self, monkeypatch):
         """Test default model can be overridden via environment variable."""
         custom_default = "groq/llama-3.1-8b-instant"
-        monkeypatch.setenv("LLMAN_DEFAULT_MODEL", custom_default)
+        monkeypatch.setenv("LLMAP_DEFAULT_MODEL", custom_default)
         cfg = reload_config()
         assert cfg.DEFAULT_MODEL == custom_default
-        monkeypatch.delenv("LLMAN_DEFAULT_MODEL", raising=False)
+        monkeypatch.delenv("LLMAP_DEFAULT_MODEL", raising=False)
         reload_config()
 
     def test_api_key_env_vars(self):
