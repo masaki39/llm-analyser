@@ -1,449 +1,165 @@
-## pplyz
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/pplyz?period=total&units=international_system&left_color=grey&right_color=green&left_text=downloads)](https://pepy.tech/projects/pplyz)
 
-Minimal CSV→LLM→CSV transformer powered by LiteLLM. Point it at a CSV, pick columns, describe the desired JSON schema, and pplyz writes the result back as new columns.
+# pplyz
 
-### Quick run (uvx)
+Minimal CSV→LLM→CSV transformer powered by LiteLLM and uv. 日本語はこちら → [README.ja.md](README.ja.md)
 
-```bash
-# No install: pulls pplyz from PyPI / TestPyPI into an ephemeral venv
-uvx pplyz --input data/sample.csv --columns question,answer --output enriched.csv
-```
+## Requirements
 
-Add `--preview` to try a handful of rows first. Use `--list` to print bundled prompt templates.
-
-### Requirements
-
-- Python 3.12+
 - [uv](https://github.com/astral-sh/uv)
-- One LLM API key supported by LiteLLM (OpenAI, Gemini, Anthropic, Groq, etc.)
+  - macOS/Linux: `brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - Windows: `scoop install uv`
+- At least one LiteLLM-compatible API key (OpenAI, Gemini, Anthropic, Groq, etc.)
 
-### Configuration
+`uvx` downloads the right Python runtime automatically, so no global Python is needed once uv is installed.
 
-pplyz loads configuration in this order (later wins):
-
-1. Existing environment variables
-2. `./pplyz.local.toml`
-3. `~/.config/pplyz/config.toml` (override via `PPLYZ_CONFIG_DIR`)
-
-Start from the template:
+## Quick run (uvx)
 
 ```bash
-cp pplyz.local.toml.example pplyz.local.toml
+uvx pplyz \
+  --input data/sample.csv \
+  --columns question,answer \
+  --fields 'score:int,notes:str' \
+  --output enriched.csv
 ```
 
-Example config:
-
-```toml
-[env]
-OPENAI_API_KEY = "sk-..."
-
-[pplyz]
-default_model = "gpt-4o-mini"
-```
-
-Only set the providers you need. Common keys: `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, or `PPLYZ_DEFAULT_MODEL` to force a model string like `groq/llama-3.1-8b-instant`.
-
-### Local development
-
-```bash
-uv sync
-uv run python main.py --help
-```
-
-Pre-commit runs pytest + Ruff automatically. Use `uv tool run pre-commit install` before committing.
-
-### Support
-
-- Issues / PRs welcome.
-- Licensed under MIT (see `LICENSE`).
-
-```bash
-pplyz --input data/yourfile.csv --columns title,abstract --preview --preview-rows 5
-```
-
-### Examples
-
-#### Example 1: Sentiment Analysis
-
-```bash
-pplyz --input data/reviews.csv --columns review_text --output sentiment_results.csv
-```
-
-When prompted, enter:
-```
-Analyze the sentiment and classify as positive, negative, or neutral. Also provide a confidence score.
-```
-
-#### Example 2: Academic Paper Analysis
-
-```bash
-pplyz --input data/hsa-miR-144-3p.csv --columns title,abstract --output analysis.csv
-```
-
-When prompted, enter:
-```
-Extract the following information: research_topic, methodology, key_findings, and clinical_significance
-```
-
-#### Example 3: Using Different LLM Providers
-
-```bash
-# Use Gemini 2.0 Flash Lite (default)
-pplyz --input data/papers.csv --columns title,abstract --output results.csv
-
-# Use OpenAI GPT-4o
-pplyz --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o
-
-# Use Anthropic Claude 3.5 Sonnet
-pplyz --input data/papers.csv --columns title,abstract --output results.csv --model claude-3-5-sonnet-20241022
-
-# Use OpenAI GPT-4o Mini (cost-effective)
-pplyz --input data/papers.csv --columns title,abstract --output results.csv --model gpt-4o-mini
-```
-
-#### Example 4: Boolean-Based Classification (Recommended)
-
-```bash
-pplyz \
-  --input data/articles.csv \
-  --columns title,abstract \
-  --fields 'is_relevant:bool,summary:str' \
-  --output classified.csv
-```
-
-When prompted, enter:
-```
-Determine if this article is relevant to climate change research (true/false).
-Provide a one-sentence summary.
-```
-
-**Why this works well**: Boolean fields guarantee only `true`/`false` values, avoiding ambiguous responses like "yes", "maybe", or "unclear".
-
-#### Example 5: List Available Models
-
-```bash
-pplyz --list
-```
-
-### Command-Line Options
-
-| Option | Short | Description | Required |
-|--------|-------|-------------|----------|
-| `--input` | `-i` | Path to input CSV file | Yes |
-| `--columns` | `-c` | Comma-separated list of columns to use as LLM input | Yes |
-| `--fields` | `-f` | Field definition string (e.g., `"field1:str,field2:int"`). Required to keep output columns consistent. | Yes |
-| `--output` | `-o` | Path to output CSV file (defaults to overwriting the input file when omitted) | No |
-| `--model` | `-m` | LLM model name (default: `PPLYZ_DEFAULT_MODEL` or `gemini/gemini-2.5-flash-lite`) | No |
-| `--list` | `-l` | List supported models and exit | No |
-| `--preview` | `-p` | Preview results on sample rows without saving | No |
-| `--preview-rows` | | Number of rows to preview (default: 3) | No |
-| `--no-resume` | `-R` | Reprocess all rows even if output exists | No |
-
-> **Note:** When `--output` is omitted, the processor overwrites the input CSV in place. Use `--preview` first or point `--output` to a different file if you want to keep the original rows untouched.
-
-## Best Practices for Field Definitions
-
-### Defining Fields
-
-Use `--fields` (required) to describe the JSON structure you expect back. The CLI enforces this flag to keep output columns consistent:
-
-```bash
---fields "is_relevant:bool,summary:str,keywords:list[str]"
-```
-
-Any field without `:type` defaults to `str`. Supported types: `bool`, `int`, `float`, `str`, `list[str]`, `list[int]`, `list[float]`, `list[bool]`, and `dict`.
-
-### Field Design Patterns
-
-#### Pattern 1: Binary Classification (Most Reliable) ✅
-
-Use **boolean fields** for yes/no decisions - these are strictly enforced across all LLM providers:
-
-```bash
-pplyz \
-  --input data.csv \
-  --columns title,abstract \
-  --fields "is_relevant:bool,reason:str" \
-  --output results.csv
-```
-
-**Why boolean?** Unlike string fields, boolean type guarantees only `true` or `false` values - no unexpected strings like "yes", "maybe", or "unknown".
-
-#### Pattern 2: Multi-level Classification (Requires Care) ⚠️
-
-For granular classifications (e.g., high/medium/low), understand the limitations:
-
-```bash
---fields "relevance:str,confidence:str,notes:str"
-```
-
-**Important**: String fields don't enforce enum constraints. LLMs may return unexpected values.
-
-**Best Practice**:
-1. Use very explicit prompts listing all allowed values
-2. Consider post-processing for production use
-3. Consider using boolean flags instead (see Pattern 3)
-
-#### Pattern 3: Hybrid Approach (Recommended for Production) 🎯
-
-Combine boolean gates with descriptive fields:
-
-```bash
---fields "is_dish_related:bool,confidence_level:str,explanation:str"
-```
-
-Then in your prompt:
-```
-First, determine if the article is DISH-related (true/false).
-Then rate confidence as "high", "medium", or "low".
-Provide a brief explanation.
-```
-
-**Advantages**:
-- Boolean field provides reliable binary classification
-- String fields provide additional context
-- Works consistently across all providers
-
-### Supported Field Types
-
-| Type | Enforcement Level | Use Case | Example |
-|------|------------------|----------|---------|
-| `bool` | ✅ Strict (`true`/`false` only) | Binary decisions | `"is_relevant": "bool"` |
-| `int` | ✅ Strict (integers only) | Counts, scores | `"score": "int"` |
-| `float` | ✅ Strict (numbers only) | Decimal scores | `"confidence": "float"` |
-| `str` | ⚠️ Flexible (any text) | Descriptions, reasons | `"summary": "str"` |
-| `list[str]` | ⚠️ Flexible (JSON array) | Tags, keywords | `"tags": "list[str]"` |
-
-### Understanding Output Validation Levels
-
-LLM Analyser supports three levels of validation through LiteLLM:
-
-1. **JSON Syntax Only** (basic mode)
-   - Ensures valid JSON structure
-   - No field or type validation
-
-2. **Type Validation** (with `--fields`)
-   - Enforces field presence and types
-   - Boolean, int, float strictly enforced
-   - Strings accept any text
-
-3. **Enum/Pattern Validation** (limited support)
-   - Only supported by some models (e.g., OpenAI GPT-4o)
-   - Not universally available
-   - **Requires post-processing for most models**
-
-### Provider-Specific Behavior
-
-| Provider | Boolean/Int/Float | String Enums | Recommendation |
-|----------|-------------------|--------------|----------------|
-| OpenAI (GPT-4o) | ✅ Excellent | ✅ Good | Best for strict schemas |
-| Anthropic (Claude) | ✅ Excellent | ⚠️ Moderate | Good JSON, use strong prompts |
-| Gemini (Flash) | ✅ Good | ❌ Limited | Boolean + post-processing |
-| Others | Varies | ❌ Limited | Test thoroughly |
-
-## How It Works
-
-1. **Input**: The tool reads a CSV file and extracts specified columns
-2. **Processing**: For each row:
-   - Selected column data is formatted as JSON
-   - Combined with your prompt and sent to the LLM
-   - LLM generates structured JSON output
-   - Retry logic handles API errors automatically
-3. **Output**: Generated data is added as new columns with a configurable prefix
-4. **Error Handling**:
-   - Automatic retries for rate limits (HTTP 429) and transient errors (500, 502, 503, 504)
-   - Exponential backoff with configurable wait times
-   - Graceful error logging for rows that fail after retries
-
-## Supported Models
-
-LLM Analyser supports 100+ models via LiteLLM. Common examples:
-
-**Gemini Models:**
-- `gemini/gemini-2.5-flash-lite` - Fast and lightweight (default)
-- `gemini/gemini-2.0-flash-lite` - Fast and lightweight
-- `gemini/gemini-1.5-pro` - High quality
-- `gemini/gemini-1.5-flash` - Balanced
-
-**OpenAI Models:**
-- `gpt-4o` - Latest GPT-4o
-- `gpt-4o-mini` - Cost-effective
-- `gpt-3.5-turbo` - Fast
-
-**Anthropic Models:**
-- `claude-3-5-sonnet-20241022` - High quality
-- `claude-3-haiku-20240307` - Fast
-
-For the full list, run `pplyz --list` (or `-l`) (use `uv run python main.py --list` from source) or visit [LiteLLM Providers](https://docs.litellm.ai/docs/providers).
+- `--preview --preview-rows 5` dry-runs a handful of rows.
+- `--list` prints bundled prompt templates and exits.
+- `--model provider/name` overrides the LiteLLM model (e.g., `groq/llama-3.1-8b-instant`).
+
+Run `uvx pplyz --help` for every flag.
+
+## Common options
+
+| Flag | Description | Required |
+| --- | --- | --- |
+| `-i, --input PATH` | Input CSV. | Yes |
+| `-c, --columns title,abstract` | Comma-separated columns passed to the LLM. | Yes |
+| `-f, --fields 'score:int,notes:str'` | Output schema. Types: `bool`, `int`, `float`, `str`, `list[...]`, `dict`. Missing `:type` defaults to `str`. | Yes |
+| `-o, --output PATH` | Output CSV (defaults to overwriting the input file). | No |
+| `-p, --preview` | Process a few rows and show would-be output without writing. | No |
+| `--preview-rows N` | Number of preview rows (default 3). | No |
+| `-m, --model provider/name` | LiteLLM model (default `gemini/gemini-2.5-flash-lite`). | No |
+| `-R, --no-resume` | Disable resume mode; always recompute rows. | No |
+| `-l, --list` | List supported templates/models and exit. | No |
 
 ## Configuration
 
-Key configuration options can be found in `pplyz/config.py` and `pplyz/settings.py`:
+1. Create the user config once:
 
-- `DEFAULT_MODEL`: Default model (gemini/gemini-2.5-flash-lite). Override by setting `PPLYZ_DEFAULT_MODEL` in your config TOML or environment.
-- `USE_JSON_MODE`: Force JSON output via LiteLLM (True)
-- `MAX_RETRIES`: Maximum number of retry attempts (`len(RETRY_BACKOFF_SCHEDULE) + 1`)
-- `RETRY_BACKOFF_SCHEDULE`: Fixed delays between retries (`[1, 2, 3, 5, 10, 10, 10, 10, 10]` seconds)
-- `REQUEST_DELAY`: Delay between API requests (0.5 seconds)
-- `pplyz/settings.py`: Resolves user-level configuration from `~/.config/pplyz/`
-
-## Project Structure
-
-```
-pplyz/
-├── main.py                 # Dev entry point (calls pplyz.cli)
-├── pplyz/
-│   ├── __init__.py        # Package initialization
-│   ├── cli.py             # Command-line interface
-│   ├── config.py          # Static configuration settings
-│   ├── llm_client.py      # LLM API client with retry logic
-│   ├── processor.py       # CSV processing logic
-│   ├── schemas.py         # Output schema definitions
-│   ├── settings.py        # Runtime configuration loader
-│   └── utils.py           # Shared helpers
-├── data/                   # Input CSV files
-├── pyproject.toml         # Project dependencies
-├── pplyz.local.toml.example # Example local configuration
-└── README.md              # This file
-```
-
-## Error Handling
-
-The tool includes comprehensive error handling:
-
-- **API Rate Limits**: Automatic retry with exponential backoff
-- **Transient Errors**: Retries for temporary server issues
-- **Invalid JSON**: Clear error messages when LLM output isn't valid JSON
-- **Missing Columns**: Validation before processing starts
-- **Keyboard Interrupt**: Graceful shutdown on Ctrl+C
-
-## Limitations
-
-- **Sequential Processing**: Rows are processed one at a time to respect API rate limits
-- **API Costs**: Each row requires an API call, which may incur costs (varies by provider)
-- **Model Constraints**: Output quality depends on the LLM model's capabilities
-- **JSON Mode**: Some providers may not support JSON mode (will fall back to prompt-based JSON)
-
-## Troubleshooting
-
-### API Key Error
-
-```
-Error: API key for gemini not found. Please set the GEMINI_API_KEY environment variable.
-```
-
-**Solution**: Make sure you've set the appropriate API key in `pplyz.local.toml`, `~/.config/pplyz/config.toml`, or as an environment variable.
-
-### Rate Limit Errors
-
-```
-litellm.RateLimitError: 429 Rate limit exceeded
-```
-
-**Solution**: The tool will automatically retry with exponential backoff. If errors persist, consider:
-- Increasing `REQUEST_DELAY` in `config.py`
-- Using a different model with higher rate limits
-- Upgrading your API plan
-
-### Invalid JSON Response
-
-```
-ValueError: Failed to parse LLM response as JSON
-```
-
-**Solution**: Make your prompt more specific about requiring JSON output, or try rephrasing the task.
-
-### Unexpected Output Values
-
-**Problem**: LLM returns values outside your expected range (e.g., "yes"/"no" instead of "high"/"middle"/"low").
-
-**Why this happens**:
-- String fields (`"str"`) only enforce type, not specific values
-- LLMs may interpret instructions creatively
-- Enum constraints are not universally supported across all providers
-
-**Solutions**:
-
-1. **Use boolean fields for binary decisions** (RECOMMENDED):
    ```bash
-   --fields "is_relevant:bool,reason:str"
+   mkdir -p ~/.config/pplyz
+   $EDITOR ~/.config/pplyz/config.toml
    ```
-   Boolean fields strictly enforce `true`/`false` values across all providers.
 
-2. **Choose models with better instruction-following**:
-   - OpenAI GPT-4o: Best enum constraint support
-   - Anthropic Claude: Strong instruction-following
-   - Gemini Flash: Good for general use
+2. Add only the providers you actually use:
 
-3. **Strengthen your prompt**:
-   - Provide explicit examples
-   - Use "You MUST output only: X, Y, or Z"
-   - Add example output in the prompt
+   ```toml
+   [env]
+   OPENAI_API_KEY = "sk-..."
+   GROQ_API_KEY = "gsk-..."
 
-4. **Use preview mode to validate**:
-   ```bash
-   --preview --preview-rows 5
+   [pplyz]
+   default_model = "gpt-4o-mini"
    ```
-   Check actual outputs before processing full dataset.
 
-**Note**: Even with strict prompts, string fields may return unexpected values. Consider post-processing for production use.
+3. At runtime pplyz loads settings in this order: environment variables → `~/.config/pplyz/config.toml`. To keep configs elsewhere, set `PPLYZ_CONFIG_DIR=/path/to/dir` and place `config.toml` there.
 
-## Development
+### Settings reference
 
-### Running Tests
+**[pplyz] table**
 
-Install development dependencies:
+| key | description | default |
+| --- | --- | --- |
+| `default_model` | Sets the fallback LiteLLM model when `--model` is omitted. | `gemini/gemini-2.5-flash-lite` |
+
+### Provider API keys
+
+Set these inside the `[env]` table of your `config.toml`:
+
+| Provider | Keys (checked in order) |
+| --- | --- |
+| Gemini | `GEMINI_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` |
+| Anthropic / Claude | `ANTHROPIC_API_KEY` |
+| Groq | `GROQ_API_KEY` |
+| Mistral | `MISTRAL_API_KEY` |
+| Cohere | `COHERE_API_KEY` |
+| Replicate | `REPLICATE_API_KEY` |
+| Hugging Face | `HUGGINGFACE_API_KEY` |
+| Together AI | `TOGETHERAI_API_KEY`, `TOGETHER_AI_TOKEN` |
+| Perplexity | `PERPLEXITY_API_KEY` |
+| DeepSeek | `DEEPSEEK_API_KEY` |
+| xAI | `XAI_API_KEY` |
+| Azure OpenAI | `AZURE_OPENAI_API_KEY`, `AZURE_API_KEY` |
+| AWS (Bedrock/SageMaker) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| Vertex AI | `GOOGLE_APPLICATION_CREDENTIALS` |
+
+## Supported models
+
+Pulled from `pplyz/config.py` for quick reference—LiteLLM supports many more.
+
+| Model id | Notes |
+| --- | --- |
+| `gemini/gemini-2.5-flash-lite` | Default, fast + cheap. |
+| `gemini/gemini-1.5-pro` | Higher quality Gemini. |
+| `gpt-4o` | OpenAI flagship. |
+| `gpt-4o-mini` | Cheaper GPT-4o Mini. |
+| `claude-3-5-sonnet-20241022` | Balanced Anthropic model. |
+| `claude-3-haiku-20240307` | Fast Anthropic Haiku. |
+| `groq/llama-3.1-8b-instant` | Ultra-low latency on Groq. |
+| `mistral/mistral-large-latest` | Enterprise Mistral. |
+| `cohere/command-r-plus` | Tool-friendly Cohere model. |
+| `replicate/meta/meta-llama-3-8b-instruct` | Replicate-hosted Llama 3 8B. |
+| `huggingface/meta-llama/Meta-Llama-3-8B-Instruct` | Hugging Face endpoint. |
+| `xai/grok-beta` | xAI Grok Beta. |
+| `together_ai/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo` | Together AI aggregator. |
+| `perplexity/llama-3.1-sonar-small-128k-online` | Web-augmented Perplexity Sonar. |
+| `deepseek/deepseek-chat` | DeepSeek Chat. |
+| `azure/gpt-4o` | Azure OpenAI variant. |
+| `databricks/mixtral-8x7b-instruct` | Databricks MosaicML endpoint. |
+| `sagemaker/meta-textgeneration-llama-3-8b` | AWS SageMaker endpoint. |
+
+Use `uvx pplyz --list` to see the live list bundled with your version.
+
+## Examples
+
+Sentiment pass with a preview first:
 
 ```bash
-uv sync --extra dev
+uvx pplyz \
+  --input data/reviews.csv \
+  --columns review_text \
+  --fields 'sentiment:str,confidence:float' \
+  --preview --preview-rows 5
 ```
 
-Run all tests:
+Boolean classifier that writes back into the same CSV:
 
 ```bash
-uv run pytest
+uvx pplyz \
+  --input data/articles.csv \
+  --columns title,abstract \
+  --fields 'is_relevant:bool,summary:str' \
+  --output data/articles.csv
 ```
 
-Run tests with coverage:
+Model override with Anthropic:
 
 ```bash
-uv run pytest --cov=pplyz --cov-report=html
+uvx pplyz \
+  --input data/papers.csv \
+  --columns title,abstract \
+  --fields 'findings:str' \
+  --model claude-3-5-sonnet-20241022
 ```
 
-Run specific test file:
+## Tips
 
-```bash
-uv run pytest tests/test_config.py
-```
+- Boolean fields keep binary classifiers deterministic (`true`/`false`).
+- Keep prompts short and explicit about the JSON schema you expect to avoid parsing errors.
+- Use `--preview` before long or expensive CSV batches to validate prompts and model choice.
 
-Run tests by marker:
+## Support & License
 
-```bash
-uv run pytest -m unit
-```
-
-### Test Structure
-
-```
-tests/
-├── test_config.py       # Configuration tests
-├── test_llm_client.py   # LLM client tests (mocked)
-├── test_processor.py    # CSV processor tests
-├── test_main.py         # CLI tests
-└── fixtures/            # Test data
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## License
-
-This project is provided as-is for educational and research purposes.
-
-## Acknowledgments
-
-- Built with [LiteLLM](https://docs.litellm.ai/) for multi-provider LLM support
-- Supports [Google Gemini](https://ai.google.dev/), [OpenAI](https://openai.com/), [Anthropic](https://www.anthropic.com/), [Groq](https://console.groq.com/), [Mistral](https://mistral.ai/), [Cohere](https://cohere.com/), and 100+ other providers exposed via LiteLLM
-- Uses [uv](https://github.com/astral-sh/uv) for fast, reliable dependency management
-- Powered by [pandas](https://pandas.pydata.org/) for CSV processing
+Issues and PRs are welcome. Licensed under MIT — see `LICENSE`.
