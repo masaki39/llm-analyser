@@ -2,6 +2,8 @@
 
 # pplyz
 
+Source & issues: https://github.com/masaki39/pplyz
+
 Minimal CSV→LLM→CSV transformer powered by LiteLLM and uv. 日本語はこちら → [README.ja.md](README.ja.md)
 
 ## Requirements
@@ -22,7 +24,7 @@ uvx pplyz \
   --output 'score:int,notes:str'
 ```
 
-- `--preview --preview-rows 5` dry-runs a handful of rows.
+- `--preview` dry-runs a handful of rows (set `[pplyz].preview_rows` to change how many rows are shown).
 - `--list` prints bundled prompt templates and exits.
 - `--model provider/name` overrides the LiteLLM model (e.g., `groq/llama-3.1-8b-instant`).
 
@@ -37,10 +39,9 @@ Run `uvx pplyz --help` for every flag.
 | `INPUT` (positional) | Input CSV path. | Yes |
 | `-i, --input title,abstract` | Comma-separated source columns passed to the LLM. | Yes (unless `[pplyz].default_input` is set) |
 | `-o, --output 'score:int,notes:str'` | Output schema. Types: `bool`, `int`, `float`, `str`, `list[...]`, `dict`. Missing `:type` defaults to `str`. | Yes (unless `[pplyz].default_output` is set) |
-| `-p, --preview` | Process a few rows and show would-be output without writing. | No |
-| `--preview-rows N` | Number of preview rows (default 3). | No |
+| `-p, --preview` | Process a few rows and show would-be output without writing (row count configured via `[pplyz].preview_rows`). | No |
 | `-m, --model provider/name` | LiteLLM model (default `gemini/gemini-2.5-flash-lite`). | No |
-| `-R, --no-resume` | Disable resume mode; always recompute rows. | No |
+| `-f, --force` | Disable resume mode; always recompute rows and overwrite existing output. | No |
 | `-l, --list` | List supported templates/models and exit. | No |
 
 ## Configuration
@@ -78,6 +79,7 @@ Tip: `pplyz data/papers.csv --input title,abstract --output 'summary:str'` uses 
 | `default_model` | Sets the fallback LiteLLM model when `--model` is omitted. | `gemini/gemini-2.5-flash-lite` |
 | `default_input` | Comma-separated columns used when `-i/--input` is omitted. | unset |
 | `default_output` | Output schema used when `-o/--output` is omitted. | unset |
+| `preview_rows` | Number of rows used when `--preview` is set (can also be overridden via `PPLYZ_PREVIEW_ROWS`). | `3` |
 
 ### Provider API keys
 
@@ -130,14 +132,19 @@ Use `uvx pplyz --list` to see the live list bundled with your version.
 
 ## Examples
 
-Sentiment pass with a preview first:
+Sentiment pass with a preview first (`preview_rows` set to 5 in your config):
+
+```toml
+[pplyz]
+preview_rows = 5
+```
 
 ```bash
 uvx pplyz \
   data/reviews.csv \
   --input review_text \
   --output 'sentiment:str,confidence:float' \
-  --preview --preview-rows 5
+  --preview
 ```
 
 Boolean classifier that writes back into the same CSV:

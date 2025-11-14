@@ -8,6 +8,7 @@ from typing import List, Optional, Type
 import pandas as pd
 from pydantic import BaseModel
 
+from .config import DEFAULT_PREVIEW_ROWS
 from .llm_client import LLMClient
 from .schemas import get_field_names
 from .utils import format_error_message
@@ -87,13 +88,13 @@ class CSVProcessor:
 
         # Load CSV - use output if it exists and resume is True
         if output_path.exists() and resume:
-            logger.info(f"Resuming: Loading existing output from {output_path}...")
+            logger.info("Resume enabled -> loading existing output: %s", output_path)
             df = pd.read_csv(output_path)
-            logger.info(f"Loaded {len(df)} rows (resume mode)")
+            logger.info("Loaded %d rows (resume mode)", len(df))
         else:
-            logger.info(f"Loading CSV from {input_path}...")
+            logger.info("Loading CSV from %s", input_path)
             df = pd.read_csv(input_path)
-            logger.info(f"Loaded {len(df)} rows")
+            logger.info("Loaded %d rows", len(df))
 
         # Validate columns
         missing_cols = set(columns) - set(df.columns)
@@ -111,23 +112,27 @@ class CSVProcessor:
             new_column_names = []
 
         # Process each row
-        logger.info(
-            f"\nProcessing rows with LLM (model: {self.llm_client.model_name})..."
+        schema_info = (
+            ",".join(get_field_names(response_model)) if response_model else "dynamic"
         )
-        logger.info(f"Using columns: {columns}")
-        logger.info(f"Prompt: {prompt}")
-        if response_model:
-            logger.info(f"Schema: {get_field_names(response_model)}")
-        logger.info("")
+        logger.info(
+            "Processing rows | model=%s | columns=%s | schema=%s",
+            self.llm_client.model_name,
+            ",".join(columns),
+            schema_info,
+        )
+        logger.info("Prompt: %s", prompt)
 
         results = []
         failed_rows = []
         processed = 0
         skipped = 0
+        total_rows = len(df)
 
         for idx, row in df.iterrows():
             row_num = idx + 1
             result_position = len(results)
+            prefix = f"[{row_num}/{total_rows}]"
 
             # Check if row should be skipped (resume mode)
             if (
@@ -135,7 +140,7 @@ class CSVProcessor:
                 and new_column_names
                 and not self._should_process_row(row, new_column_names)
             ):
-                logger.info(f"Row {row_num}/{len(df)}: ✓ Skipping (already processed)")
+                logger.info("%s skip (already processed)", prefix)
                 # Keep existing data
                 existing_data = {
                     col: row[col] if col in row.index else None
@@ -144,8 +149,6 @@ class CSVProcessor:
                 results.append(existing_data if existing_data else {})
                 skipped += 1
                 continue
-
-            logger.info(f"Processing row {row_num}/{len(df)}...")
 
             try:
                 # Extract input data from selected columns
@@ -158,12 +161,10 @@ class CSVProcessor:
 
                 results.append(output)
                 processed += 1
-                logger.info(f"Row {row_num}/{len(df)}: ✓ Success")
+                logger.info("%s ✓ success", prefix)
 
             except Exception as e:
-                logger.error(
-                    f"Row {row_num}/{len(df)}: ✗ Error: {format_error_message(e)}"
-                )
+                logger.error("%s ✗ %s", prefix, format_error_message(e))
                 # Add empty result to maintain row alignment
                 results.append({})
                 processed += 1
@@ -197,28 +198,30 @@ class CSVProcessor:
         output_df = df
 
         # Save output
-        logger.info(f"\nSaving results to {output_path}...")
+        logger.info("Saving results to %s", output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_df.to_csv(output_path, index=False)
-        logger.info(f"✓ Saved {len(output_df)} rows")
+        logger.info("✓ Saved %d rows", len(output_df))
 
         # Print summary
-        logger.info(f"\n{'='*60}")
-        logger.info("Processing Summary:")
-        logger.info(f"  Total rows: {len(df)}")
-        logger.info(f"  Processed: {processed}")
-        logger.info(f"  Skipped: {skipped}")
-        logger.info(f"  Successful: {processed - len(errors)}")
-        logger.info(f"  Errors: {len(errors)}")
+        separator = "=" * 40
+        logger.info(separator)
+        logger.info(
+            "Summary | total=%d processed=%d skipped=%d success=%d errors=%d",
+            len(df),
+            processed,
+            skipped,
+            processed - len(errors),
+            len(errors),
+        )
 
         if errors:
-            logger.warning("\nErrors encountered:")
-            for error in errors[:10]:  # Show first 10 errors
-                logger.warning(f"  - {error}")
-            if len(errors) > 10:
-                logger.warning(f"  ... and {len(errors) - 10} more errors")
+            first_errors = "; ".join(errors[:5])
+            logger.warning("Errors (%d): %s", len(errors), first_errors)
+            if len(errors) > 5:
+                logger.warning("... %d additional error(s)", len(errors) - 5)
 
-        logger.info(f"{'='*60}")
+        logger.info(separator)
 
     def _retry_failed_rows(
         self,
@@ -241,7 +244,8 @@ class CSVProcessor:
             List of failure metadata that still failed after retry.
         """
         logger.info(
-            f"\nRetrying {len(failed_rows)} failed row(s) to avoid empty outputs..."
+            "Retrying %d failed row(s) before finalizing output...",
+            len(failed_rows),
         )
         remaining_failures = []
 
@@ -256,19 +260,19 @@ class CSVProcessor:
                     prompt, input_data, response_model
                 )
                 results[position] = output
-                logger.info(f"Row {row_num}: ✓ Success on fallback retry")
+                logger.info("Row %d ✓ recovered on retry", row_num)
             except Exception as retry_error:
                 formatted = format_error_message(retry_error)
                 failure["error"] = formatted
                 remaining_failures.append(failure)
-                logger.error(f"Row {row_num}: ✗ Fallback retry failed: {formatted}")
+                logger.error("Row %d ✗ retry failed: %s", row_num, formatted)
 
         if remaining_failures:
             logger.warning(
-                f"\nUnable to recover {len(remaining_failures)} row(s) after fallback."
+                "Unable to recover %d row(s) after fallback.", len(remaining_failures)
             )
         else:
-            logger.info("All failed rows recovered successfully.")
+            logger.info("Recovered all failed rows successfully.")
 
         return remaining_failures
 
@@ -277,7 +281,7 @@ class CSVProcessor:
         input_path: Path | str,
         columns: List[str],
         prompt: str,
-        num_rows: int = 3,
+        num_rows: int = DEFAULT_PREVIEW_ROWS,
         response_model: Optional[Type[BaseModel]] = None,
     ) -> None:
         """Preview LLM output on a sample of rows without saving.
@@ -306,23 +310,27 @@ class CSVProcessor:
             )
 
         # Process sample rows
-        logger.info(f"Preview: Processing {num_rows} sample rows...\n")
+        logger.info(
+            "Preview mode | rows=%d | columns=%s",
+            num_rows,
+            ",".join(columns),
+        )
         sample_df = df.head(num_rows)
+        total_rows = len(sample_df)
+
+        def _truncate(value):
+            if isinstance(value, str) and len(value) > 100:
+                return value[:100] + "..."
+            return value
 
         for idx, row in sample_df.iterrows():
             row_num = idx + 1
-            logger.info(f"{'='*60}")
-            logger.info(f"Row {row_num}:")
-            logger.info(f"{'='*60}")
-
-            # Show input data
-            logger.info("Input:")
+            prefix = f"[preview {row_num}/{total_rows}]"
+            input_preview = {}
             for col in columns:
                 value = row[col]
-                # Truncate long values
-                if isinstance(value, str) and len(value) > 100:
-                    value = value[:100] + "..."
-                logger.info(f"  {col}: {value}")
+                input_preview[col] = _truncate(value)
+            logger.info("%s input=%s", prefix, input_preview)
 
             try:
                 # Extract input data
@@ -333,11 +341,11 @@ class CSVProcessor:
                     prompt, input_data, response_model
                 )
 
-                # Show output
-                logger.info("\nOutput:")
-                logger.info(json.dumps(output, ensure_ascii=False, indent=2))
+                logger.info(
+                    "%s output=%s",
+                    prefix,
+                    json.dumps(output, ensure_ascii=False),
+                )
 
             except Exception as e:
-                logger.error(f"\n✗ Error: {format_error_message(e)}")
-
-            logger.info("")
+                logger.error("%s ✗ %s", prefix, format_error_message(e))

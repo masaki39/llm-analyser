@@ -16,6 +16,7 @@ from pplyz.config import (
     DEFAULT_INPUT_COLUMNS_ENV_VAR,
     DEFAULT_OUTPUT_FIELDS_ENV_VAR,
     DEFAULT_MODEL_ENV_VAR,
+    PREVIEW_ROWS_ENV_VAR,
 )
 
 try:  # Python 3.11+ provides tomllib
@@ -32,6 +33,7 @@ _PPYLZ_ENV_MAP = {
     "default_model": DEFAULT_MODEL_ENV_VAR,
     "default_input": DEFAULT_INPUT_COLUMNS_ENV_VAR,
     "default_output": DEFAULT_OUTPUT_FIELDS_ENV_VAR,
+    "preview_rows": PREVIEW_ROWS_ENV_VAR,
 }
 
 

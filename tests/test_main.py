@@ -5,7 +5,14 @@ from unittest.mock import patch
 
 import pytest
 
-from pplyz.cli import list_supported_models, main, parse_arguments
+from pplyz.cli import (
+    get_user_prompt,
+    list_supported_models,
+    main,
+    parse_arguments,
+    resolve_preview_rows,
+)
+from pplyz.config import DEFAULT_PREVIEW_ROWS
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +21,7 @@ def clear_cli_defaults(monkeypatch):
     for key in (
         "PPLYZ_DEFAULT_INPUT",
         "PPLYZ_DEFAULT_OUTPUT",
+        "PPLYZ_PREVIEW_ROWS",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -80,25 +88,6 @@ class TestParseArguments:
 
             assert args.preview is True
 
-    def test_parse_with_preview_rows_option(self):
-        """Test parsing with preview rows option."""
-        test_args = [
-            "pplyz",
-            "test.csv",
-            "--input",
-            "col1",
-            "--preview",
-            "--preview-rows",
-            "5",
-            "--output",
-            "flag:bool",
-        ]
-
-        with patch.object(sys, "argv", test_args):
-            args = parse_arguments()
-
-            assert args.preview_rows == 5
-
     def test_parse_with_output_option(self):
         """Test parsing with output schema option."""
         test_args = [
@@ -153,7 +142,7 @@ class TestParseArguments:
             "-p",
             "-o",
             "flag:bool",
-            "-R",
+            "-f",
             "-l",
         ]
 
@@ -165,7 +154,7 @@ class TestParseArguments:
         assert args.model == "gpt-4o"
         assert args.preview is True
         assert args.output_fields == "flag:bool"
-        assert args.no_resume is True
+        assert args.force is True
         assert args.list_models is True
 
     def test_help_uses_compact_flags(self, capsys):
@@ -198,10 +187,47 @@ class TestListSupportedModels:
         # Check that output contains expected content
         assert "SUPPORTED MODELS" in captured.out
         assert "gemini/gemini-2.5-flash-lite" in captured.out
-        assert "gemini/gemini-2.0-flash-lite" in captured.out
-        assert "gpt-4o" in captured.out
-        assert "claude-3-5-sonnet" in captured.out
-        assert "litellm.ai" in captured.out
+
+
+class TestPromptInput:
+    """Tests for interactive prompt handling."""
+
+    def test_prompt_keyboard_interrupt(self, monkeypatch, capsys):
+        """Ctrl+C during prompt should exit gracefully."""
+        monkeypatch.setattr("pplyz.cli._build_prompt_session", lambda: None)
+
+        def _raise_keyboard_interrupt(_prompt):
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr("builtins.input", _raise_keyboard_interrupt)
+
+        with pytest.raises(SystemExit) as exc_info:
+            get_user_prompt()
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Prompt entry cancelled" in captured.out
+
+
+class TestPreviewRowResolution:
+    """Tests for resolving preview row count."""
+
+    def test_preview_rows_default(self, monkeypatch):
+        """Falls back to default when env var missing."""
+        monkeypatch.delenv("PPLYZ_PREVIEW_ROWS", raising=False)
+        assert resolve_preview_rows() == DEFAULT_PREVIEW_ROWS
+
+    def test_preview_rows_from_env(self, monkeypatch):
+        """Uses env var when provided."""
+        monkeypatch.setenv("PPLYZ_PREVIEW_ROWS", "7")
+        assert resolve_preview_rows() == 7
+
+    def test_preview_rows_invalid_env(self, monkeypatch, caplog):
+        """Falls back to default on invalid value."""
+        caplog.set_level("INFO")
+        monkeypatch.setenv("PPLYZ_PREVIEW_ROWS", "zero")
+        assert resolve_preview_rows() == DEFAULT_PREVIEW_ROWS
+        assert "Invalid preview row count" in caplog.text
 
 
 class TestMainExecution:

@@ -11,6 +11,8 @@ from pplyz.config import (
     DATA_DIR,
     DEFAULT_INPUT_COLUMNS_ENV_VAR,
     DEFAULT_OUTPUT_FIELDS_ENV_VAR,
+    DEFAULT_PREVIEW_ROWS,
+    PREVIEW_ROWS_ENV_VAR,
     SUPPORTED_MODELS,
     get_default_model,
 )
@@ -18,6 +20,8 @@ from pplyz.llm_client import LLMClient
 from pplyz.processor import CSVProcessor
 from pplyz.schemas import create_output_model_from_string
 from pplyz.settings import load_runtime_configuration
+
+DOCS_URL = "https://github.com/masaki39/pplyz#readme"
 
 try:
     from prompt_toolkit import PromptSession
@@ -58,22 +62,8 @@ def parse_arguments() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         usage="pplyz [INPUT] [options]",
-        description="Process CSV files with LLM to generate structured data columns",
         formatter_class=CompactHelpFormatter,
-        epilog="""
-Examples:
-  # Process a CSV file with interactive prompt
-  pplyz data/papers.csv --input title,abstract --output 'summary:str,is_relevant:bool'
-
-  # Preview results on sample rows before full processing
-  pplyz data/papers.csv --input title,abstract --output 'summary:str' --preview
-
-  # Use a custom model
-  pplyz data/papers.csv --input title,abstract --output 'summary:str' --model gemini-2.5-flash-lite
-
-API Keys:
-  Set the appropriate provider API key via environment variables or config TOML (see README).
-        """,
+        epilog=f"Docs & issues: {DOCS_URL}",
     )
 
     parser.add_argument(
@@ -94,7 +84,7 @@ API Keys:
     output_help = (
         'Output fields definition (e.g., "is_relevant:bool,summary:str,keywords:list[str]"). '
         "Supported types: bool, int, float, str, list[str], list[int], list[float], "
-        "list[bool], dict. Omitting :type defaults to str. Required to keep output columns consistent."
+        "list[bool], dict."
     )
 
     parser.add_argument(
@@ -109,14 +99,7 @@ API Keys:
         "--preview",
         "-p",
         action="store_true",
-        help="Preview results on sample rows without saving (3 rows by default)",
-    )
-
-    parser.add_argument(
-        "--preview-rows",
-        type=int,
-        default=3,
-        help="Number of rows to preview when using --preview (default: 3)",
+        help="Preview results on sample rows without saving",
     )
 
     default_model = get_default_model()
@@ -126,14 +109,21 @@ API Keys:
         "-m",
         type=str,
         default=default_model,
-        help=f"LLM model name (default: {default_model}). Supports Gemini, OpenAI, Anthropic models via LiteLLM.",
+        help=f"LLM model name (default: {default_model})",
     )
 
     parser.add_argument(
-        "--no-resume",
-        "-R",
+        "--force",
+        "-f",
+        dest="force",
         action="store_true",
-        help="Disable resume mode (always process all rows, even if output exists)",
+        help="Force reprocessing of all rows and overwrite previous output",
+    )
+    parser.add_argument(
+        "--no-resume",
+        dest="force",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -145,6 +135,26 @@ API Keys:
     )
 
     return parser.parse_args()
+
+
+def resolve_preview_rows() -> int:
+    """Resolve preview row count from environment/config."""
+    value = os.environ.get(PREVIEW_ROWS_ENV_VAR)
+    if value is None:
+        return DEFAULT_PREVIEW_ROWS
+
+    try:
+        rows = int(value)
+        if rows <= 0:
+            raise ValueError
+        return rows
+    except ValueError:
+        logger.warning(
+            "Invalid preview row count '%s'. Falling back to %d rows.",
+            value,
+            DEFAULT_PREVIEW_ROWS,
+        )
+        return DEFAULT_PREVIEW_ROWS
 
 
 def get_user_prompt() -> str:
@@ -167,10 +177,14 @@ def get_user_prompt() -> str:
 
     prompt_session = _build_prompt_session()
 
-    if prompt_session is not None:
-        prompt = prompt_session.prompt("Enter your task description: ").strip()
-    else:
-        prompt = input("Enter your task description: ").strip()
+    try:
+        if prompt_session is not None:
+            prompt = prompt_session.prompt("Enter your task description: ").strip()
+        else:
+            prompt = input("Enter your task description: ").strip()
+    except (KeyboardInterrupt, EOFError):
+        print("\nPrompt entry cancelled. Exiting.")
+        sys.exit(1)
 
     if not prompt:
         print("Error: Prompt cannot be empty")
@@ -293,21 +307,19 @@ def main() -> None:
             sys.exit(1)
 
     # Initialize LLM client
-    logger.info(f"\nInitializing LLM client (model: {args.model})...")
+    logger.info("Initializing LLM client (model: %s)...", args.model)
     try:
         llm_client = LLMClient(model_name=args.model)
-        logger.info(f"✓ LLM client initialized (provider: {llm_client.provider})")
+        logger.info("✓ LLM client initialized (provider: %s)", llm_client.provider)
     except ValueError as e:
-        logger.error(f"Error: {e}")
-        logger.error("\nPlease set the appropriate API key for your chosen model.")
-        logger.error("For example:")
-        for provider, env_var in API_KEY_ENV_VARS.items():
-            logger.error(
-                f"  export {env_var}='your-api-key-here'  # For {provider} models"
-            )
+        sample_keys = [envs[0] for envs in API_KEY_ENV_VARS.values() if envs]
+        sample_text = ", ".join(sample_keys[:5])
+        logger.error("LLM client initialization failed: %s", e)
         logger.error(
-            "\nOr configure pplyz.local.toml or ~/.config/pplyz/config.toml with the appropriate API key."
+            "Set the API key env var for your provider (e.g., %s) or add it to the TOML config.",
+            sample_text,
         )
+        logger.error("See the README for the full list of supported provider keys.")
         sys.exit(1)
 
     # Initialize processor
@@ -315,12 +327,13 @@ def main() -> None:
 
     try:
         if args.preview:
+            preview_rows = resolve_preview_rows()
             # Preview mode
             processor.preview_sample(
                 input_path=input_path,
                 columns=columns,
                 prompt=prompt,
-                num_rows=args.preview_rows,
+                num_rows=preview_rows,
                 response_model=response_model,
             )
         else:
@@ -331,7 +344,7 @@ def main() -> None:
                 columns=columns,
                 prompt=prompt,
                 response_model=response_model,
-                resume=not args.no_resume,
+                resume=not args.force,
             )
 
     except FileNotFoundError as e:

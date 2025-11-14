@@ -1,5 +1,7 @@
 # pplyz（日本語）
 
+GitHub: https://github.com/masaki39/pplyz
+
 English → [README.md](README.md)
 
 ## 必要なもの
@@ -20,7 +22,7 @@ uvx pplyz \
   --output 'score:int,notes:str'
 ```
 
-- `--preview --preview-rows 5` で一部だけプレビュー。
+- `--preview` で一部だけプレビュー（行数は `[pplyz].preview_rows` で設定）。
 - `--list` は同梱テンプレートを表示して終了。
 - `--model provider/name` で LiteLLM モデルを上書き（例: `groq/llama-3.1-8b-instant`）。
 
@@ -35,10 +37,9 @@ _pplyz は入力 CSV をそのまま上書きします。元データを残し�
 | `INPUT`（位置引数） | 入力 CSV。 | はい |
 | `-i, --input title,abstract` | LLM に渡す列名。カンマ区切り。 | はい（`[pplyz].default_input` 設定時は不要） |
 | `-o, --output 'score:int,notes:str'` | 出力スキーマ。型は `bool/int/float/str/list[...] / dict`。省略時は `str`。 | はい（`[pplyz].default_output` 設定時は不要） |
-| `-p, --preview` | 数行だけ処理して結果を表示（ファイル変更なし）。 | いいえ |
-| `--preview-rows N` | プレビューする行数（初期値 3）。 | いいえ |
+| `-p, --preview` | 数行だけ処理して結果を表示（行数は `[pplyz].preview_rows` で設定）。 | いいえ |
 | `-m, --model provider/name` | LiteLLM モデル指定。初期値 `gemini/gemini-2.5-flash-lite`。 | いいえ |
-| `-R, --no-resume` | 既存出力があっても毎回最初から処理。 | いいえ |
+| `-f, --force` | 既存出力があっても毎回最初から処理し上書き。 | いいえ |
 | `-l, --list` | 利用可能テンプレート/モデルを表示して終了。 | いいえ |
 
 ## 設定
@@ -76,6 +77,7 @@ _pplyz は入力 CSV をそのまま上書きします。元データを残し�
 | `default_model` | `--model` を省略した際の LiteLLM モデル。 | `gemini/gemini-2.5-flash-lite` |
 | `default_input` | `-i/--input` を省略したときに使う列リスト。 | 未設定 |
 | `default_output` | `-o/--output` を省略したときに使う出力スキーマ。 | 未設定 |
+| `preview_rows` | `--preview` 使用時に処理する行数（`PPLYZ_PREVIEW_ROWS` でも指定可）。 | `3` |
 
 ### プロバイダ別 API キー
 
@@ -128,14 +130,19 @@ _pplyz は入力 CSV をそのまま上書きします。元データを残し�
 
 ## 例
 
-プレビューで感情分析：
+プレビューで感情分析（設定で `preview_rows = 5` とした例）：
+
+```toml
+[pplyz]
+preview_rows = 5
+```
 
 ```bash
 uvx pplyz \
   data/reviews.csv \
   --input review_text \
   --output 'sentiment:str,confidence:float' \
-  --preview --preview-rows 5
+  --preview
 ```
 
 同じ CSV に分類結果を書き戻す例：

@@ -67,3 +67,4 @@ DATABRICKS_TOKEN = "your-databricks-token-here"
 default_model = "gemini/gemini-2.5-flash-lite"
 default_input = "title,abstract"
 default_output = "include:bool,summary:str"
+preview_rows = 5  # Number of rows shown when running with --preview
