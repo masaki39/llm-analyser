@@ -2,12 +2,15 @@
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
 from pplyz.config import (
     API_KEY_ENV_VARS,
     DATA_DIR,
+    DEFAULT_INPUT_COLUMNS_ENV_VAR,
+    DEFAULT_OUTPUT_FIELDS_ENV_VAR,
     SUPPORTED_MODELS,
     get_default_model,
 )
@@ -54,19 +57,19 @@ def parse_arguments() -> argparse.Namespace:
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
-        usage="pplyz [options]",
+        usage="pplyz [INPUT] [options]",
         description="Process CSV files with LLM to generate structured data columns",
         formatter_class=CompactHelpFormatter,
         epilog="""
 Examples:
   # Process a CSV file with interactive prompt
-  pplyz --input data/papers.csv --columns title,abstract --output results.csv
+  pplyz data/papers.csv --input title,abstract --output 'summary:str,is_relevant:bool'
 
   # Preview results on sample rows before full processing
-  pplyz --input data/papers.csv --columns title,abstract --preview
+  pplyz data/papers.csv --input title,abstract --output 'summary:str' --preview
 
   # Use a custom model
-  pplyz --input data/papers.csv --columns title,abstract --output results.csv --model gemini-2.5-flash-lite
+  pplyz data/papers.csv --input title,abstract --output 'summary:str' --model gemini-2.5-flash-lite
 
 API Keys:
   Set the appropriate provider API key via environment variables or config TOML (see README).
@@ -74,37 +77,32 @@ API Keys:
     )
 
     parser.add_argument(
-        "--input",
-        "-i",
-        type=str,
-        help="Path to input CSV file",
+        "input_path",
+        nargs="?",
+        metavar="INPUT",
+        help="Positional input CSV path",
     )
 
     parser.add_argument(
-        "--columns",
-        "-c",
+        "--input",
+        "-i",
+        dest="input_columns",
         type=str,
         help="Comma-separated list of columns to use as LLM input (e.g., 'title,abstract,keywords')",
     )
 
-    field_help = (
+    output_help = (
         'Output fields definition (e.g., "is_relevant:bool,summary:str,keywords:list[str]"). '
         "Supported types: bool, int, float, str, list[str], list[int], list[float], "
         "list[bool], dict. Omitting :type defaults to str. Required to keep output columns consistent."
     )
 
     parser.add_argument(
-        "--fields",
-        "-f",
-        type=str,
-        help=field_help,
-    )
-
-    parser.add_argument(
         "--output",
         "-o",
         type=str,
-        help="Path to output CSV file (optional, defaults to input file)",
+        dest="output_fields",
+        help=output_help,
     )
 
     parser.add_argument(
@@ -223,6 +221,15 @@ def main() -> None:
     # Parse arguments
     args = parse_arguments()
 
+    positional_input = getattr(args, "input_path", None)
+
+    default_columns = os.environ.get(DEFAULT_INPUT_COLUMNS_ENV_VAR)
+    default_fields = os.environ.get(DEFAULT_OUTPUT_FIELDS_ENV_VAR)
+
+    resolved_input = positional_input
+    resolved_columns = args.input_columns or default_columns
+    resolved_fields = args.output_fields or default_fields
+
     # Handle --list
     if args.list_models:
         list_supported_models()
@@ -230,12 +237,12 @@ def main() -> None:
 
     # Validate required arguments (only if not using --list)
     missing_args = []
-    if not args.input:
+    if not resolved_input:
+        missing_args.append("INPUT (positional)")
+    if not resolved_columns:
         missing_args.append("--input/-i")
-    if not args.columns:
-        missing_args.append("--columns/-c")
-    if not args.fields:
-        missing_args.append("--fields/-f")
+    if not resolved_fields:
+        missing_args.append("--output/-o")
 
     if missing_args:
         print("Error: the following arguments are required: " + ", ".join(missing_args))
@@ -243,14 +250,14 @@ def main() -> None:
         sys.exit(1)
 
     # Parse columns
-    columns = [col.strip() for col in args.columns.split(",")]
+    columns = [col.strip() for col in resolved_columns.split(",")]
 
     if not columns:
         print("Error: At least one column must be specified")
         sys.exit(1)
 
     # Resolve input path
-    input_path = Path(args.input)
+    input_path = Path(resolved_input)
     if not input_path.is_absolute():
         # Try relative to DATA_DIR first
         data_path = DATA_DIR / input_path
@@ -260,15 +267,27 @@ def main() -> None:
             # Use as relative to current directory
             input_path = input_path.resolve()
 
+    if not input_path.exists():
+        print(f"Error: Input file not found: {input_path}")
+        sys.exit(1)
+
+    if input_path.is_dir():
+        print(f"Error: Input path must be a CSV file, not a directory: {input_path}")
+        sys.exit(1)
+
+    if input_path.suffix.lower() != ".csv":
+        print(f"Error: Input file must have a .csv extension: {input_path}")
+        sys.exit(1)
+
     # Get user prompt interactively
     prompt = get_user_prompt()
 
-    # Create response model from schema/fields if provided
+    # Create response model from the requested output schema when provided
     response_model = None
-    if args.fields:
+    if resolved_fields:
         try:
-            response_model = create_output_model_from_string(args.fields)
-            print(f"\n✓ Using fields: {args.fields}")
+            response_model = create_output_model_from_string(resolved_fields)
+            print(f"\n✓ Using output schema: {resolved_fields}")
         except Exception as e:
             print(f"Error parsing fields: {e}")
             sys.exit(1)
@@ -305,12 +324,10 @@ def main() -> None:
                 response_model=response_model,
             )
         else:
-            # Full processing mode
-            # Default output to input if not specified
-            output_path = Path(args.output) if args.output else input_path
+            # Full processing mode (always overwrite input file unless backup is handled externally)
             processor.process_csv(
                 input_path=input_path,
-                output_path=output_path,
+                output_path=input_path,
                 columns=columns,
                 prompt=prompt,
                 response_model=response_model,

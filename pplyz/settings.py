@@ -12,6 +12,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from pplyz.config import (
+    DEFAULT_INPUT_COLUMNS_ENV_VAR,
+    DEFAULT_OUTPUT_FIELDS_ENV_VAR,
+    DEFAULT_MODEL_ENV_VAR,
+)
+
 try:  # Python 3.11+ provides tomllib
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
@@ -21,6 +27,12 @@ CONFIG_DIR_ENV = "PPLYZ_CONFIG_DIR"
 CONFIG_TOML_NAME = "config.toml"
 LOCAL_CONFIG_NAME = "pplyz.local.toml"
 PROJECT_ROOT = Path(__file__).parent.parent
+
+_PPYLZ_ENV_MAP = {
+    "default_model": DEFAULT_MODEL_ENV_VAR,
+    "default_input": DEFAULT_INPUT_COLUMNS_ENV_VAR,
+    "default_output": DEFAULT_OUTPUT_FIELDS_ENV_VAR,
+}
 
 
 def load_runtime_configuration() -> None:
@@ -73,9 +85,10 @@ def _load_toml_config(path: Path) -> None:
 
     pplyz_section = data.get("pplyz", {})
     if isinstance(pplyz_section, dict):
-        default_model = pplyz_section.get("default_model")
-        if default_model:
-            _set_env_if_missing("PPLYZ_DEFAULT_MODEL", str(default_model))
+        for key, env_var in _PPYLZ_ENV_MAP.items():
+            value = pplyz_section.get(key)
+            if value:
+                _set_env_if_missing(env_var, str(value))
 
 
 def _set_env_if_missing(name: str, value: str) -> None:

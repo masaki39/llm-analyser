@@ -15,15 +15,16 @@ uvx が Python ランタイムを自動取得するため、uv を入れれば�
 
 ```bash
 uvx pplyz \
-  --input data/sample.csv \
-  --columns question,answer \
-  --fields 'score:int,notes:str' \
-  --output enriched.csv
+  data/sample.csv \
+  --input question,answer \
+  --output 'score:int,notes:str'
 ```
 
 - `--preview --preview-rows 5` で一部だけプレビュー。
 - `--list` は同梱テンプレートを表示して終了。
 - `--model provider/name` で LiteLLM モデルを上書き（例: `groq/llama-3.1-8b-instant`）。
+
+_pplyz は入力 CSV をそのまま上書きします。元データを残したい場合は事前にコピーしてください。_
 
 詳細なフラグは `uvx pplyz --help` を参照。
 
@@ -31,10 +32,9 @@ uvx pplyz \
 
 | フラグ | 説明 | 必須 |
 | --- | --- | --- |
-| `-i, --input PATH` | 入力 CSV。 | はい |
-| `-c, --columns title,abstract` | LLM に渡す列名。カンマ区切り。 | はい |
-| `-f, --fields 'score:int,notes:str'` | 出力スキーマ。型は `bool/int/float/str/list[...] / dict`。省略時は `str`。 | はい |
-| `-o, --output PATH` | 出力 CSV。省略すると入力ファイルに上書き。 | いいえ |
+| `INPUT`（位置引数） | 入力 CSV。 | はい |
+| `-i, --input title,abstract` | LLM に渡す列名。カンマ区切り。 | はい（`[pplyz].default_input` 設定時は不要） |
+| `-o, --output 'score:int,notes:str'` | 出力スキーマ。型は `bool/int/float/str/list[...] / dict`。省略時は `str`。 | はい（`[pplyz].default_output` 設定時は不要） |
 | `-p, --preview` | 数行だけ処理して結果を表示（ファイル変更なし）。 | いいえ |
 | `--preview-rows N` | プレビューする行数（初期値 3）。 | いいえ |
 | `-m, --model provider/name` | LiteLLM モデル指定。初期値 `gemini/gemini-2.5-flash-lite`。 | いいえ |
@@ -59,9 +59,13 @@ uvx pplyz \
 
    [pplyz]
    default_model = "gpt-4o-mini"
+   default_input = "title,abstract"
+   default_output = "is_relevant:bool,summary:str"
    ```
 
 3. 読み込み順は「環境変数 → `~/.config/pplyz/config.toml`」。別の場所を使いたい場合は `PPLYZ_CONFIG_DIR=/path/to/dir` を設定して、そのディレクトリに `config.toml` を置きます。
+
+ワンポイント: `pplyz data/papers.csv --input title,abstract --output 'summary:str'` のように、最初の引数をそのまま入力 CSV として扱えます。
 
 ### 設定値リファレンス
 
@@ -70,6 +74,8 @@ uvx pplyz \
 | キー | 説明 | 既定値 |
 | --- | --- | --- |
 | `default_model` | `--model` を省略した際の LiteLLM モデル。 | `gemini/gemini-2.5-flash-lite` |
+| `default_input` | `-i/--input` を省略したときに使う列リスト。 | 未設定 |
+| `default_output` | `-o/--output` を省略したときに使う出力スキーマ。 | 未設定 |
 
 ### プロバイダ別 API キー
 
@@ -126,9 +132,9 @@ uvx pplyz \
 
 ```bash
 uvx pplyz \
-  --input data/reviews.csv \
-  --columns review_text \
-  --fields 'sentiment:str,confidence:float' \
+  data/reviews.csv \
+  --input review_text \
+  --output 'sentiment:str,confidence:float' \
   --preview --preview-rows 5
 ```
 
@@ -136,25 +142,24 @@ uvx pplyz \
 
 ```bash
 uvx pplyz \
-  --input data/articles.csv \
-  --columns title,abstract \
-  --fields 'is_relevant:bool,summary:str' \
-  --output data/articles.csv
+  data/articles.csv \
+  --input title,abstract \
+  --output 'is_relevant:bool,summary:str'
 ```
 
 Anthropic モデルを指定：
 
 ```bash
 uvx pplyz \
-  --input data/papers.csv \
-  --columns title,abstract \
-  --fields 'findings:str' \
+  data/papers.csv \
+  --input title,abstract \
+  --output 'findings:str' \
   --model claude-3-5-sonnet-20241022
 ```
 
 ## ヒント
 
-- Boolean フィールド（`--fields 'is_relevant:bool'`）は二値分類を安定させます。
+- Boolean 出力列（`--output 'is_relevant:bool'`）は二値分類を安定させます。
 - 欲しい JSON スキーマはプロンプトに明記するとパースエラーを減らせます。
 - 高コストの CSV を回す前に `--preview` で挙動とモデルを確認しましょう。
 

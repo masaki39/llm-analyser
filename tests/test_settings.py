@@ -33,11 +33,19 @@ OPENAI_API_KEY = "openai-key"
 
 [pplyz]
 default_model = "gemini/example-model"
+default_input = "title,abstract"
+default_output = "summary:str"
 """
     )
 
     monkeypatch.setenv(settings.CONFIG_DIR_ENV, str(config_dir))
-    for key in ("OPENAI_API_KEY", "GEMINI_API_KEY", "PPLYZ_DEFAULT_MODEL"):
+    for key in (
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "PPLYZ_DEFAULT_MODEL",
+        "PPLYZ_DEFAULT_INPUT",
+        "PPLYZ_DEFAULT_OUTPUT",
+    ):
         monkeypatch.delenv(key, raising=False)
 
     settings.load_runtime_configuration()
@@ -45,6 +53,8 @@ default_model = "gemini/example-model"
     assert os.environ["OPENAI_API_KEY"] == "openai-key"
     assert os.environ["GEMINI_API_KEY"] == "gemini-key"
     assert os.environ["PPLYZ_DEFAULT_MODEL"] == "gemini/example-model"
+    assert os.environ["PPLYZ_DEFAULT_INPUT"] == "title,abstract"
+    assert os.environ["PPLYZ_DEFAULT_OUTPUT"] == "summary:str"
 
 
 def test_local_config_takes_precedence(monkeypatch, tmp_path):
@@ -59,6 +69,8 @@ OPENAI_API_KEY = "local-openai"
 
 [pplyz]
 default_model = "local-model"
+default_input = "local-col"
+default_output = "flag:bool"
 """
     )
     monkeypatch.setattr(settings, "PROJECT_ROOT", project_root)
@@ -74,11 +86,19 @@ GEMINI_API_KEY = "global-gemini"
 
 [pplyz]
 default_model = "global-model"
+default_input = "global-col"
+default_output = "summary:str"
 """
     )
 
     monkeypatch.setenv(settings.CONFIG_DIR_ENV, str(config_dir))
-    for key in ("OPENAI_API_KEY", "GEMINI_API_KEY", "PPLYZ_DEFAULT_MODEL"):
+    for key in (
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "PPLYZ_DEFAULT_MODEL",
+        "PPLYZ_DEFAULT_INPUT",
+        "PPLYZ_DEFAULT_OUTPUT",
+    ):
         monkeypatch.delenv(key, raising=False)
 
     settings.load_runtime_configuration()
@@ -86,3 +106,5 @@ default_model = "global-model"
     assert os.environ["OPENAI_API_KEY"] == "local-openai"
     assert os.environ["GEMINI_API_KEY"] == "global-gemini"
     assert os.environ["PPLYZ_DEFAULT_MODEL"] == "local-model"
+    assert os.environ["PPLYZ_DEFAULT_INPUT"] == "local-col"
+    assert os.environ["PPLYZ_DEFAULT_OUTPUT"] == "flag:bool"

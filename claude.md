@@ -167,7 +167,7 @@ The processor continues processing even when individual rows fail:
 Preview mode allows users to test prompts before full processing:
 
 ```bash
-pplyz --input data.csv --columns col1,col2 --preview
+pplyz data.csv --input col1,col2 --preview
 ```
 
 **Features**:
@@ -483,7 +483,7 @@ LLM Analyser supports three levels of output validation through LiteLLM:
    - No field or type validation
    - Works with all providers
 
-2. **Type Validation** (with `--fields`)
+2. **Type Validation** (with `--output`)
    - Enforces field presence and basic types
    - Boolean, int, float strictly enforced
    - String fields accept any text (no enum constraint)
@@ -505,7 +505,7 @@ Based on real-world testing with multiple providers:
 | `str` | ⚠️ **Flexible** | Any text accepted (no enum) |
 | `list[str]` | ⚠️ **Flexible** | JSON array of strings |
 
-**Key Insight**: String fields with `--fields 'relation:str'` only enforce that the value is a string. They do NOT enforce enum-like constraints (e.g., "must be high/middle/low").
+**Key Insight**: String fields with `--output 'relation:str'` only enforce that the value is a string. They do NOT enforce enum-like constraints (e.g., "must be high/middle/low").
 
 ### Recommended Schema Patterns
 
@@ -514,7 +514,7 @@ Based on real-world testing with multiple providers:
 For binary classification tasks, use boolean fields:
 
 ```bash
---fields "is_relevant:bool,confidence:str,reason:str"
+--output "is_relevant:bool,confidence:str,reason:str"
 ```
 
 **Advantages**:
@@ -534,7 +534,7 @@ Provide confidence level (high/medium/low) and reason.
 For multi-level classification (high/middle/low):
 
 ```bash
---fields "relation:str,reason:str"
+--output "relation:str,reason:str"
 ```
 
 **Reality**:
@@ -552,7 +552,7 @@ For multi-level classification (high/middle/low):
 Combine boolean gates with descriptive string fields:
 
 ```bash
---fields "is_dish_related:bool,relevance_level:str,explanation:str"
+--output "is_dish_related:bool,relevance_level:str,explanation:str"
 ```
 
 **Workflow**:
@@ -596,7 +596,7 @@ When designing your schema:
 - Expected: `"relation": "high"` | `"middle"` | `"low"`
 - Actual: Various unexpected values like "unrelated", "no", "N/A", etc.
 
-**Lesson**: `--fields 'field:str'` only enforces type (string), not enum values.
+**Lesson**: `--output 'field:str'` only enforces type (string), not enum values.
 
 #### 2. Boolean Fields Provide Strict Enforcement
 

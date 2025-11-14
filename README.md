@@ -17,15 +17,16 @@ Minimal CSV→LLM→CSV transformer powered by LiteLLM and uv. 日本語はこ�
 
 ```bash
 uvx pplyz \
-  --input data/sample.csv \
-  --columns question,answer \
-  --fields 'score:int,notes:str' \
-  --output enriched.csv
+  data/sample.csv \
+  --input question,answer \
+  --output 'score:int,notes:str'
 ```
 
 - `--preview --preview-rows 5` dry-runs a handful of rows.
 - `--list` prints bundled prompt templates and exits.
 - `--model provider/name` overrides the LiteLLM model (e.g., `groq/llama-3.1-8b-instant`).
+
+_pplyz overwrites the input CSV; copy it first if you need to keep the original file._
 
 Run `uvx pplyz --help` for every flag.
 
@@ -33,10 +34,9 @@ Run `uvx pplyz --help` for every flag.
 
 | Flag | Description | Required |
 | --- | --- | --- |
-| `-i, --input PATH` | Input CSV. | Yes |
-| `-c, --columns title,abstract` | Comma-separated columns passed to the LLM. | Yes |
-| `-f, --fields 'score:int,notes:str'` | Output schema. Types: `bool`, `int`, `float`, `str`, `list[...]`, `dict`. Missing `:type` defaults to `str`. | Yes |
-| `-o, --output PATH` | Output CSV (defaults to overwriting the input file). | No |
+| `INPUT` (positional) | Input CSV path. | Yes |
+| `-i, --input title,abstract` | Comma-separated source columns passed to the LLM. | Yes (unless `[pplyz].default_input` is set) |
+| `-o, --output 'score:int,notes:str'` | Output schema. Types: `bool`, `int`, `float`, `str`, `list[...]`, `dict`. Missing `:type` defaults to `str`. | Yes (unless `[pplyz].default_output` is set) |
 | `-p, --preview` | Process a few rows and show would-be output without writing. | No |
 | `--preview-rows N` | Number of preview rows (default 3). | No |
 | `-m, --model provider/name` | LiteLLM model (default `gemini/gemini-2.5-flash-lite`). | No |
@@ -61,9 +61,13 @@ Run `uvx pplyz --help` for every flag.
 
    [pplyz]
    default_model = "gpt-4o-mini"
+   default_input = "title,abstract"
+   default_output = "is_relevant:bool,summary:str"
    ```
 
 3. At runtime pplyz loads settings in this order: environment variables → `~/.config/pplyz/config.toml`. To keep configs elsewhere, set `PPLYZ_CONFIG_DIR=/path/to/dir` and place `config.toml` there.
+
+Tip: `pplyz data/papers.csv --input title,abstract --output 'summary:str'` uses the positional `data/papers.csv` as the CSV input.
 
 ### Settings reference
 
@@ -72,6 +76,8 @@ Run `uvx pplyz --help` for every flag.
 | key | description | default |
 | --- | --- | --- |
 | `default_model` | Sets the fallback LiteLLM model when `--model` is omitted. | `gemini/gemini-2.5-flash-lite` |
+| `default_input` | Comma-separated columns used when `-i/--input` is omitted. | unset |
+| `default_output` | Output schema used when `-o/--output` is omitted. | unset |
 
 ### Provider API keys
 
@@ -128,9 +134,9 @@ Sentiment pass with a preview first:
 
 ```bash
 uvx pplyz \
-  --input data/reviews.csv \
-  --columns review_text \
-  --fields 'sentiment:str,confidence:float' \
+  data/reviews.csv \
+  --input review_text \
+  --output 'sentiment:str,confidence:float' \
   --preview --preview-rows 5
 ```
 
@@ -138,25 +144,24 @@ Boolean classifier that writes back into the same CSV:
 
 ```bash
 uvx pplyz \
-  --input data/articles.csv \
-  --columns title,abstract \
-  --fields 'is_relevant:bool,summary:str' \
-  --output data/articles.csv
+  data/articles.csv \
+  --input title,abstract \
+  --output 'is_relevant:bool,summary:str'
 ```
 
 Model override with Anthropic:
 
 ```bash
 uvx pplyz \
-  --input data/papers.csv \
-  --columns title,abstract \
-  --fields 'findings:str' \
+  data/papers.csv \
+  --input title,abstract \
+  --output 'findings:str' \
   --model claude-3-5-sonnet-20241022
 ```
 
 ## Tips
 
-- Boolean fields keep binary classifiers deterministic (`true`/`false`).
+- Boolean output columns keep binary classifiers deterministic (`true`/`false`).
 - Keep prompts short and explicit about the JSON schema you expect to avoid parsing errors.
 - Use `--preview` before long or expensive CSV batches to validate prompts and model choice.
 

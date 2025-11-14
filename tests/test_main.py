@@ -8,6 +8,22 @@ import pytest
 from pplyz.cli import list_supported_models, main, parse_arguments
 
 
+@pytest.fixture(autouse=True)
+def clear_cli_defaults(monkeypatch):
+    """Ensure CLI default env vars are unset for each test."""
+    for key in (
+        "PPLYZ_DEFAULT_INPUT",
+        "PPLYZ_DEFAULT_OUTPUT",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def disable_runtime_config(monkeypatch):
+    """Avoid reading developer-local config files during CLI tests."""
+    monkeypatch.setattr("pplyz.cli.load_runtime_configuration", lambda: None)
+
+
 class TestParseArguments:
     """Test command-line argument parsing."""
 
@@ -15,37 +31,30 @@ class TestParseArguments:
         """Test parsing required arguments."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1,col2",
             "--output",
-            "output.csv",
-            "--fields",
             "score:float,label:str",
         ]
 
         with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
-            assert args.input == "test.csv"
-            assert args.columns == "col1,col2"
-            assert args.output == "output.csv"
-            assert args.fields == "score:float,label:str"
+        assert args.input_path == "test.csv"
+        assert args.input_columns == "col1,col2"
+        assert args.output_fields == "score:float,label:str"
 
     def test_parse_with_model_option(self):
         """Test parsing with model option."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1",
-            "--output",
-            "output.csv",
             "--model",
             "gpt-4o",
-            "--fields",
+            "--output",
             "confidence:float",
         ]
 
@@ -58,12 +67,11 @@ class TestParseArguments:
         """Test parsing with preview option."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1",
             "--preview",
-            "--fields",
+            "--output",
             "flag:bool",
         ]
 
@@ -76,14 +84,13 @@ class TestParseArguments:
         """Test parsing with preview rows option."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1",
             "--preview",
             "--preview-rows",
             "5",
-            "--fields",
+            "--output",
             "flag:bool",
         ]
 
@@ -92,22 +99,21 @@ class TestParseArguments:
 
             assert args.preview_rows == 5
 
-    def test_parse_with_fields_option(self):
-        """Test parsing with fields option."""
+    def test_parse_with_output_option(self):
+        """Test parsing with output schema option."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1",
-            "--fields",
+            "--output",
             "score:float,label:str",
         ]
 
         with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
-            assert args.fields == "score:float,label:str"
+            assert args.output_fields == "score:float,label:str"
 
     def test_parse_with_list_option(self):
         """Test parsing with list flag."""
@@ -118,20 +124,34 @@ class TestParseArguments:
 
             assert args.list_models is True
 
+    def test_parse_positional_input(self):
+        """Positional INPUT argument should populate input_path."""
+        test_args = [
+            "pplyz",
+            "data.csv",
+            "--input",
+            "col1",
+            "--output",
+            "flag:bool",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            args = parse_arguments()
+
+        assert args.input_path == "data.csv"
+        assert args.input_columns == "col1"
+
     def test_parse_short_options(self):
         """Test parsing with short option names."""
         test_args = [
             "pplyz",
-            "-i",
             "test.csv",
-            "-c",
+            "-i",
             "col1,col2",
-            "-o",
-            "output.csv",
             "-m",
             "gpt-4o",
             "-p",
-            "-f",
+            "-o",
             "flag:bool",
             "-R",
             "-l",
@@ -140,14 +160,13 @@ class TestParseArguments:
         with patch.object(sys, "argv", test_args):
             args = parse_arguments()
 
-            assert args.input == "test.csv"
-            assert args.columns == "col1,col2"
-            assert args.output == "output.csv"
-            assert args.model == "gpt-4o"
-            assert args.preview is True
-            assert args.fields == "flag:bool"
-            assert args.no_resume is True
-            assert args.list_models is True
+        assert args.input_path == "test.csv"
+        assert args.input_columns == "col1,col2"
+        assert args.model == "gpt-4o"
+        assert args.preview is True
+        assert args.output_fields == "flag:bool"
+        assert args.no_resume is True
+        assert args.list_models is True
 
     def test_help_uses_compact_flags(self, capsys):
         """Help text should not duplicate metavar values in option listing."""
@@ -159,7 +178,7 @@ class TestParseArguments:
 
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "usage: pplyz [options]" in captured.out
+        assert "usage: pplyz [INPUT] [options]" in captured.out
         options_text = captured.out.split("options:", 1)[1]
         assert "-i, --input" in options_text
         assert "--input INPUT, -i INPUT" not in options_text
@@ -201,7 +220,7 @@ class TestMainExecution:
             assert "SUPPORTED MODELS" in captured.out
 
     def test_main_requires_input_and_columns(self, capsys):
-        """Test that main requires --input and --columns without --list."""
+        """Test that main requires INPUT and --input columns without --list."""
         test_args = ["pplyz"]
 
         with patch.object(sys, "argv", test_args):
@@ -210,11 +229,13 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --input/-i, --columns/-c, --fields/-f" in captured.out
+            assert (
+                "required: INPUT (positional), --input/-i, --output/-o" in captured.out
+            )
 
     def test_main_requires_columns_when_only_input(self, capsys):
-        """Test that main requires --columns when only --input is provided."""
-        test_args = ["pplyz", "--input", "test.csv"]
+        """Test that main requires --input columns when only CSV is provided."""
+        test_args = ["pplyz", "test.csv"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -222,11 +243,11 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --columns/-c, --fields/-f" in captured.out
+            assert "required: --input/-i, --output/-o" in captured.out
 
     def test_main_requires_input_when_only_columns(self, capsys):
-        """Test that main requires --input when only --columns is provided."""
-        test_args = ["pplyz", "--columns", "col1,col2"]
+        """Test that main requires INPUT when only columns are provided."""
+        test_args = ["pplyz", "--input", "col1,col2"]
 
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
@@ -234,18 +255,17 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --input/-i, --fields/-f" in captured.out
+            assert "required: INPUT (positional), --output/-o" in captured.out
 
-    def test_main_accepts_preview_without_output(self):
-        """Test that main accepts --preview without --output."""
+    def test_main_accepts_preview_without_separate_file(self):
+        """Test that main accepts --preview even though we always overwrite the input CSV."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1",
             "--preview",
-            "--fields",
+            "--output",
             "flag:bool",
         ]
 
@@ -253,20 +273,19 @@ class TestMainExecution:
             with patch("pplyz.cli.get_user_prompt", return_value="Test prompt"):
                 with patch("pplyz.cli.LLMClient"):
                     with patch("pplyz.cli.CSVProcessor"):
-                        # Should not raise SystemExit for missing --output
-                        # (will fail later due to missing file, but argument parsing should pass)
+                        # Should not raise SystemExit even though the CSV doesn't exist;
+                        # the FileNotFoundError happens later during processing.
                         try:
                             main()
                         except (FileNotFoundError, SystemExit):
                             pass  # Expected due to missing test.csv
 
-    def test_main_requires_fields_when_missing(self, capsys):
-        """Test that main requires --fields when --input/--columns are provided."""
+    def test_main_requires_output_when_missing(self, capsys):
+        """Test that main requires --output when INPUT/--input are provided."""
         test_args = [
             "pplyz",
-            "--input",
             "test.csv",
-            "--columns",
+            "--input",
             "col1",
         ]
 
@@ -276,4 +295,129 @@ class TestMainExecution:
 
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
-            assert "required: --fields/-f" in captured.out
+            assert "required: --output/-o" in captured.out
+
+    def test_main_accepts_positional_input(self):
+        """Positional input path should behave like --input."""
+        test_args = [
+            "pplyz",
+            "test.csv",
+            "--input",
+            "col1",
+            "--preview",
+            "--output",
+            "flag:bool",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            with patch("pplyz.cli.get_user_prompt", return_value="Test prompt"):
+                with patch("pplyz.cli.LLMClient"):
+                    with patch("pplyz.cli.CSVProcessor"):
+                        main()
+
+    def test_main_stops_before_prompt_when_input_missing(self, monkeypatch, capsys):
+        """Missing CSV should abort before prompting the user."""
+        test_args = [
+            "pplyz",
+            "missing.csv",
+            "--input",
+            "title",
+            "--output",
+            "summary:str",
+        ]
+
+        prompt_called = False
+
+        def _fail_prompt():
+            nonlocal prompt_called
+            prompt_called = True
+            return "should-not-happen"
+
+        with patch.object(sys, "argv", test_args):
+            with patch("pplyz.cli.get_user_prompt", side_effect=_fail_prompt):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+
+        assert exc_info.value.code == 1
+        assert prompt_called is False
+        captured = capsys.readouterr()
+        assert "Input file not found" in captured.out
+
+    def test_main_rejects_non_csv_extension(self, tmp_path, capsys):
+        """Non-CSV inputs should be rejected before prompting the user."""
+        bad_file = tmp_path / "data.txt"
+        bad_file.write_text("dummy")
+
+        prompt_called = False
+
+        def _fail_prompt():
+            nonlocal prompt_called
+            prompt_called = True
+            return "should-not-happen"
+
+        test_args = [
+            "pplyz",
+            str(bad_file),
+            "--input",
+            "title",
+            "--output",
+            "summary:str",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            with patch("pplyz.cli.get_user_prompt", side_effect=_fail_prompt):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+
+        assert exc_info.value.code == 1
+        assert prompt_called is False
+        captured = capsys.readouterr()
+        assert "must have a .csv" in captured.out
+
+    def test_main_rejects_directory_input(self, tmp_path, capsys):
+        """Directories are not valid CSV inputs."""
+        dir_path = tmp_path / "data_dir"
+        dir_path.mkdir()
+
+        prompt_called = False
+
+        def _fail_prompt():
+            nonlocal prompt_called
+            prompt_called = True
+            return "should-not-happen"
+
+        test_args = [
+            "pplyz",
+            str(dir_path),
+            "--input",
+            "title",
+            "--output",
+            "summary:str",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            with patch("pplyz.cli.get_user_prompt", side_effect=_fail_prompt):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+
+        assert exc_info.value.code == 1
+        assert prompt_called is False
+        captured = capsys.readouterr()
+        assert "must be a CSV file, not a directory" in captured.out
+
+    def test_main_uses_env_defaults_for_required_arguments(self, monkeypatch):
+        """CLI should fall back to environment/config defaults for column/output flags."""
+        test_args = [
+            "pplyz",
+            "test.csv",
+            "--preview",
+        ]
+
+        monkeypatch.setenv("PPLYZ_DEFAULT_INPUT", "title")
+        monkeypatch.setenv("PPLYZ_DEFAULT_OUTPUT", "summary:str")
+
+        with patch.object(sys, "argv", test_args):
+            with patch("pplyz.cli.get_user_prompt", return_value="Test prompt"):
+                with patch("pplyz.cli.LLMClient"):
+                    with patch("pplyz.cli.CSVProcessor"):
+                        main()
